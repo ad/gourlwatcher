@@ -142,16 +142,22 @@ func main() {
 				if user.Check(db, uint64(userID)) {
 					println("add")
 					innerChan <- telegramResponse{text, chatID}
+				} else {
+					telegramChan <- telegramResponse{"Not authorized", chatID}
 				}
 			case "edit":
 				if user.Check(db, uint64(userID)) {
 					println("edit")
 					innerChan <- telegramResponse{text, chatID}
+				} else {
+					telegramChan <- telegramResponse{"Not authorized", chatID}
 				}
 			case "delete":
 				if user.Check(db, uint64(userID)) {
 					println("delete")
 					innerChan <- telegramResponse{text, chatID}
+				} else {
+					telegramChan <- telegramResponse{"Not authorized", chatID}
 				}
 			case "shot":
 				// https://github.com/suntong/web2image/blob/master/cdp-screenshot.go
@@ -159,6 +165,8 @@ func main() {
 				if user.Check(db, uint64(userID)) {
 					println("shot")
 					innerChan <- telegramResponse{text, chatID}
+				} else {
+					telegramChan <- telegramResponse{"Not authorized", chatID}
 				}
 			default:
 				msg.Text = text
