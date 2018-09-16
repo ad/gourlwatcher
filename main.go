@@ -130,7 +130,13 @@ func main() {
 
 			case "auth":
 				if args == *authSecret {
-					user.New(db, uint64(userID))
+					go func() {
+						if user.New(db, uint64(userID)) {
+							telegramChan <- telegramResponse{"Authorized", chatID}
+						} else {
+							telegramChan <- telegramResponse{"Not authorized", chatID}
+						}
+					}()
 				}
 			case "add":
 				if user.Check(db, uint64(userID)) {

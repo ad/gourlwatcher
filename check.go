@@ -355,12 +355,12 @@ func (c *Check) Modify(db *bolt.DB, cron *cron.Cron, findID string, url string, 
 	}
 }
 
-func (c *User) New(db *bolt.DB, id uint64) {
+func (c *User) New(db *bolt.DB, id uint64) (result bool) {
 	println("adding new user", id)
 
 	if id <= 0 {
 		println("missing id parameter", http.StatusBadRequest)
-		return
+		return false
 	}
 
 	user := User{
@@ -379,7 +379,7 @@ func (c *User) New(db *bolt.DB, id uint64) {
 
 	if err != nil {
 		println(err.Error(), http.StatusBadRequest)
-		return
+		return false
 	}
 
 	err = db.Update(func(tx *bolt.Tx) error {
@@ -390,13 +390,13 @@ func (c *User) New(db *bolt.DB, id uint64) {
 
 		b := tx.Bucket(UsersBucket)
 
-		seq, err := b.NextSequence()
-		if err != nil {
-			return err
-		}
+		// seq, err := b.NextSequence()
+		// if err != nil {
+		// 	return err
+		// }
 		user.ID = uint64(id)
 
-		if err = b.Put(KeyFor(seq), data); err != nil {
+		if err = b.Put(KeyFor(user.ID), data); err != nil {
 			return err
 		}
 		return nil
@@ -405,8 +405,10 @@ func (c *User) New(db *bolt.DB, id uint64) {
 	if err != nil {
 		println("error inserting new item", err, user.UserID)
 		// http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+		return false
 	}
+
+	return true
 }
 
 func (c *User) Check(db *bolt.DB, id uint64) (found bool) {
