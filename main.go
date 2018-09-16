@@ -175,7 +175,7 @@ func main() {
 			}
 			// }
 		case resp := <-telegramChan:
-			log.Println(resp.body)
+			log.Println(resp.to, resp.body)
 
 			msg := tgbotapi.NewMessage(resp.to, resp.body)
 			_, err := bot.Send(msg)

@@ -108,7 +108,7 @@ func GetAllChecks(db *bolt.DB, output *[]*Check) error {
 }
 
 func (c *Check) Update(db *bolt.DB) {
-	println("Requesting page id", c.ID, "last checked", c.LastCheckedPretty, "last changed", c.LastChangedPretty, "must", (c.NotifyPresent), "contain", c.Selector, c.ShortHash)
+	// println("Requesting page id", c.ID, "last checked", c.LastCheckedPretty, "last changed", c.LastChangedPretty, "must", (c.NotifyPresent), "contain", c.Selector, c.ShortHash)
 
 	resp, err := http.Get(c.URL)
 	if err != nil {
@@ -152,10 +152,10 @@ func (c *Check) Update(db *bolt.DB) {
 		contains := strings.Contains(string(test), c.Selector)
 
 		if contains {
-			println("updated document contains selector", c.ID)
+			// println("updated document contains selector", c.ID)
 			telegramChan <- telegramResponse{"updated document contains selector", int64(c.UserID)}
 		} else {
-			println("updated document NOT contains selector", c.ID)
+			// println("updated document NOT contains selector", c.ID)
 			telegramChan <- telegramResponse{"updated document NOT contains selector", int64(c.UserID)}
 		}
 
