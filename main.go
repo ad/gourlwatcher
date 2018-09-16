@@ -5,6 +5,8 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/boltdb/bolt"
@@ -57,7 +59,7 @@ func main() {
 	c.Start()
 	defer c.Stop()
 
-	startChan, oc, ic, _ := commandsManager(db)
+	startChan, oc, ic, _ := commandsManager(db, c)
 	innerChan = ic
 	outerChan = oc
 	telegramChan = make(chan telegramResponse)
@@ -113,12 +115,14 @@ func main() {
 			text := update.Message.Text
 			command := update.Message.Command()
 			args := update.Message.CommandArguments()
+			userID := int64(update.Message.From.ID)
+			chatID := int64(update.Message.Chat.ID)
 
-			log.Printf("[%d] %s, %s, %s", update.Message.Chat.ID, text, command, args)
+			log.Printf("[%d] %s, %s, %s", chatID, text, command, args)
 
-			msg := tgbotapi.NewMessage(int64(update.Message.From.ID), "")
+			msg := tgbotapi.NewMessage(userID, "")
 			user := User{
-				UserID:    int64(update.Message.From.ID),
+				UserID:    userID,
 				IsEnabled: true,
 			}
 
@@ -126,29 +130,29 @@ func main() {
 
 			case "auth":
 				if args == *authSecret {
-					user.New(db, uint64(update.Message.From.ID))
+					user.New(db, uint64(userID))
 				}
 			case "add":
-				if user.Check(db, uint64(update.Message.From.ID)) {
+				if user.Check(db, uint64(userID)) {
 					println("add")
-					innerChan <- telegramResponse{text, int64(update.Message.Chat.ID)}
+					innerChan <- telegramResponse{text, chatID}
 				}
 			case "edit":
-				if user.Check(db, uint64(update.Message.From.ID)) {
-					println("add")
-					innerChan <- telegramResponse{text, int64(update.Message.Chat.ID)}
+				if user.Check(db, uint64(userID)) {
+					println("edit")
+					innerChan <- telegramResponse{text, chatID}
 				}
 			case "delete":
-				if user.Check(db, uint64(update.Message.From.ID)) {
-					println("add")
-					innerChan <- telegramResponse{text, int64(update.Message.Chat.ID)}
+				if user.Check(db, uint64(userID)) {
+					println("delete")
+					innerChan <- telegramResponse{text, chatID}
 				}
 			case "shot":
 				// https://github.com/suntong/web2image/blob/master/cdp-screenshot.go
 				// https://github.com/chromedp/examples/blob/master/screenshot/main.go
-				if user.Check(db, uint64(update.Message.From.ID)) {
-					println("add")
-					innerChan <- telegramResponse{text, int64(update.Message.Chat.ID)}
+				if user.Check(db, uint64(userID)) {
+					println("shot")
+					innerChan <- telegramResponse{text, chatID}
 				}
 			default:
 				msg.Text = text
@@ -205,7 +209,7 @@ func TryUpdate(db *bolt.DB, id uint64) {
 	go check.Update(db)
 }
 
-func commandsManager(db *bolt.DB) (startChan chan bool, outerChan, innerChan chan telegramResponse, stopChan chan int64) {
+func commandsManager(db *bolt.DB, cron *cron.Cron) (startChan chan bool, outerChan, innerChan chan telegramResponse, stopChan chan int64) {
 	startChan = make(chan bool)
 	outerChan = make(chan telegramResponse)
 	innerChan = make(chan telegramResponse)
@@ -214,7 +218,7 @@ func commandsManager(db *bolt.DB) (startChan chan bool, outerChan, innerChan cha
 		for {
 			select {
 			case <-startChan:
-				go doCommand(db, innerChan, stopChan)
+				go doCommand(db, cron, innerChan, stopChan)
 			case msg := <-outerChan:
 				fmt.Println("command <- ", msg)
 				//default:
@@ -225,16 +229,51 @@ func commandsManager(db *bolt.DB) (startChan chan bool, outerChan, innerChan cha
 	return startChan, outerChan, innerChan, stopChan
 }
 
-func doCommand(db *bolt.DB, innerChan chan telegramResponse, stopChan chan int64) {
+func doCommand(db *bolt.DB, cron *cron.Cron, innerChan chan telegramResponse, stopChan chan int64) {
 	for {
 		select {
 		case msg := <-innerChan:
 			fmt.Println("command <- ", msg.body)
 			go func() {
+				if strings.HasPrefix(msg.body, "/delete") {
+					stringSlice := strings.Split(msg.body, " ")
+					if len(stringSlice) >= 2 {
+						if _, err := strconv.ParseInt(stringSlice[1], 10, 64); err == nil {
+							// fmt.Printf("%q looks like a number.\n", v)
+							check := Check{
+								Schedule: "0 * * * * *",
+							}
+
+							if check.Delete(db, stringSlice[1]) {
+								telegramChan <- telegramResponse{"Deleted", msg.to}
+							} else {
+								telegramChan <- telegramResponse{"Not deleted", msg.to}
+							}
+						}
+					}
+				} else if strings.HasPrefix(msg.body, "/add") {
+					stringSlice := strings.Split(msg.body, "\n\n")
+					if len(stringSlice) >= 2 {
+						commandURL := strings.Split(stringSlice[0], " ")
+						url := commandURL[1]
+						body := strings.Join(stringSlice[1:], "\n\n")
+
+						check := Check{
+							Schedule: "0 * * * * *",
+						}
+
+						if check.New(db, cron, url, body, "true") {
+							telegramChan <- telegramResponse{"Added", msg.to}
+						} else {
+							telegramChan <- telegramResponse{"Not added", msg.to}
+						}
+					}
+				}
 				stopChan <- msg.to
 			}()
 		case id := <-stopChan:
-			telegramChan <- telegramResponse{"stop", id}
+			println(id, "stopped")
+			// telegramChan <- telegramResponse{"stop", id}
 		}
 	}
 }

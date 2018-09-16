@@ -192,21 +192,21 @@ func (c *Check) Update(db *bolt.DB) {
 	})
 }
 
-func (c *Check) New(db *bolt.DB, cron *cron.Cron, url string, search string, contains string) {
+func (c *Check) New(db *bolt.DB, cron *cron.Cron, url string, search string, contains string) (result bool) {
 	println("adding new check", url, search)
 
 	if len(url) == 0 {
 		println("missing URL parameter", http.StatusBadRequest)
-		return
+		return false
 	}
 	if len(search) == 0 {
 		println("missing search parameter", http.StatusBadRequest)
-		return
+		return false
 	}
 
 	if len(contains) == 0 {
 		println("missing contains parameter", http.StatusBadRequest)
-		return
+		return false
 	}
 
 	check := Check{
@@ -240,7 +240,7 @@ func (c *Check) New(db *bolt.DB, cron *cron.Cron, url string, search string, con
 	if err != nil {
 		println("error inserting new item", err, check.URL)
 		// http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+		return false
 	}
 
 	// If we succeeded, we update right now...
@@ -251,13 +251,27 @@ func (c *Check) New(db *bolt.DB, cron *cron.Cron, url string, search string, con
 	cr.AddFunc(check.Schedule, func() {
 		TryUpdate(db, check.ID)
 	})
+	return true
 }
 
-func (c *Check) Delete(db *bolt.DB, cron *cron.Cron, findID string) {
+func (c *Check) Delete(db *bolt.DB, findID string) (result bool) {
 	id, err := strconv.ParseUint(findID, 10, 64)
 	if err != nil {
 		println(err.Error(), http.StatusBadRequest)
-		return
+		return false
+	}
+
+	err = db.View(func(tx *bolt.Tx) error {
+		data := tx.Bucket(UrlsBucket).Get(KeyFor(id))
+		if data == nil {
+			return fmt.Errorf("no such check: %d", id)
+		}
+		return nil
+	})
+
+	if err != nil {
+		println(err.Error(), http.StatusInternalServerError)
+		return false
 	}
 
 	err = db.Update(func(tx *bolt.Tx) error {
@@ -265,8 +279,9 @@ func (c *Check) Delete(db *bolt.DB, cron *cron.Cron, findID string) {
 	})
 	if err != nil {
 		println(err.Error(), http.StatusInternalServerError)
-		return
+		return false
 	}
+	return true
 }
 
 func (c *Check) Modify(db *bolt.DB, cron *cron.Cron, findID string, url string, search string, contains string, is_enabled string) {
