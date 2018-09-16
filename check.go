@@ -153,10 +153,10 @@ func (c *Check) Update(db *bolt.DB) {
 
 		if contains {
 			println("updated document contains selector", c.ID)
-			telegramChan <- telegramResponse{"updated document contains selector", int64(71557)}
+			telegramChan <- telegramResponse{"updated document contains selector", int64(c.UserID)}
 		} else {
 			println("updated document NOT contains selector", c.ID)
-			telegramChan <- telegramResponse{"updated document NOT contains selector", int64(71557)}
+			telegramChan <- telegramResponse{"updated document NOT contains selector", int64(c.UserID)}
 		}
 
 		if c.NotifyPresent && !contains {
