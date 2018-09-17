@@ -342,7 +342,7 @@ func (c *Check) Info(db *bolt.DB, findID string) (result string) {
 	}
 	check.PrepareForDisplay()
 
-	return fmt.Sprintf("%d from %d (%t)\nURL: %s\nSearch: %s'\nlast checked: %s\nlast changed: %s\nShow diff: %t\nMust contain string: %t", check.ID, check.UserID, check.IsEnabled, check.URL, check.Selector, check.LastCheckedPretty, check.LastChangedPretty, check.SendDiff, check.NotifyPresent)
+	return fmt.Sprintf("%d from %d (%t)\nURL: %s\nSearch: %s\nlast checked: %s\nlast changed: %s\nShow diff: %t\nMust contain string: %t", check.ID, check.UserID, check.IsEnabled, check.URL, check.Selector, check.LastCheckedPretty, check.LastChangedPretty, check.SendDiff, check.NotifyPresent)
 }
 
 func (c *Check) ShowDiff(db *bolt.DB, findID string) (result string) {
