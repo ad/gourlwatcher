@@ -1,5 +1,5 @@
 # gourlwatcher
-Demon which monitors URLs and notify creator about changes
+gourlwatcher monitors URLs and notify creator about changes by telegram
 
 ## Install
 go get -u github.com/ad/gourlwatcher

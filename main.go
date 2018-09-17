@@ -121,8 +121,6 @@ func main() {
 			userID := int64(update.Message.From.ID)
 			chatID := int64(update.Message.Chat.ID)
 
-			log.Printf("[%d] %s, %s, %s", chatID, text, command, args)
-
 			msg := tgbotapi.NewMessage(userID, "")
 			user := User{
 				UserID:    userID,
@@ -143,70 +141,71 @@ func main() {
 				}
 			case "add":
 				if user.Check(db, uint64(userID)) {
-					println("trying to add new check")
+					// println("trying to add new check")
 					innerChan <- telegramResponse{text, chatID}
 				} else {
 					telegramChan <- telegramResponse{"Not authorized", chatID}
 				}
 			case "info":
-				if user.Check(db, uint64(userID)) {
-					println("trying to get info")
-					innerChan <- telegramResponse{text, chatID}
-				} else {
-					telegramChan <- telegramResponse{"Not authorized", chatID}
-				}
+				// if user.Check(db, uint64(userID)) {
+				// println("trying to get info")
+				innerChan <- telegramResponse{text, chatID}
+				// } else {
+				// 	telegramChan <- telegramResponse{"Not authorized", chatID}
+				// }
 			case "diff":
-				if user.Check(db, uint64(userID)) {
-					println("trying to get diff")
-					innerChan <- telegramResponse{text, chatID}
-				} else {
-					telegramChan <- telegramResponse{"Not authorized", chatID}
-				}
+				// if user.Check(db, uint64(userID)) {
+				// println("trying to get diff")
+				innerChan <- telegramResponse{text, chatID}
+				// } else {
+				// 	telegramChan <- telegramResponse{"Not authorized", chatID}
+				// }
 			case "edit":
-				if user.Check(db, uint64(userID)) {
-					println("edit")
-					innerChan <- telegramResponse{text, chatID}
-				} else {
-					telegramChan <- telegramResponse{"Not authorized", chatID}
-				}
+				// if user.Check(db, uint64(userID)) {
+				// println("edit")
+				innerChan <- telegramResponse{text, chatID}
+				// } else {
+				// 	telegramChan <- telegramResponse{"Not authorized", chatID}
+				// }
 			case "delete":
-				if user.Check(db, uint64(userID)) {
-					println("delete")
-					innerChan <- telegramResponse{text, chatID}
-				} else {
-					telegramChan <- telegramResponse{"Not authorized", chatID}
-				}
+				// if user.Check(db, uint64(userID)) {
+				// println("delete")
+				innerChan <- telegramResponse{text, chatID}
+				// } else {
+				// 	telegramChan <- telegramResponse{"Not authorized", chatID}
+				// }
 			case "togglediff":
-				if user.Check(db, uint64(userID)) {
-					println("toggle diff")
-					innerChan <- telegramResponse{text, chatID}
-				} else {
-					telegramChan <- telegramResponse{"Not authorized", chatID}
-				}
+				// if user.Check(db, uint64(userID)) {
+				// println("toggle diff")
+				innerChan <- telegramResponse{text, chatID}
+				// } else {
+				// 	telegramChan <- telegramResponse{"Not authorized", chatID}
+				// }
 			case "togglecontains":
-				if user.Check(db, uint64(userID)) {
-					println("toggle contains")
-					innerChan <- telegramResponse{text, chatID}
-				} else {
-					telegramChan <- telegramResponse{"Not authorized", chatID}
-				}
+				// if user.Check(db, uint64(userID)) {
+				// println("toggle contains")
+				innerChan <- telegramResponse{text, chatID}
+				// } else {
+				// 	telegramChan <- telegramResponse{"Not authorized", chatID}
+				// }
 			case "toggleenabled":
-				if user.Check(db, uint64(userID)) {
-					println("toggle enabled")
-					innerChan <- telegramResponse{text, chatID}
-				} else {
-					telegramChan <- telegramResponse{"Not authorized", chatID}
-				}
+				// if user.Check(db, uint64(userID)) {
+				// println("toggle enabled")
+				innerChan <- telegramResponse{text, chatID}
+				// } else {
+				// 	telegramChan <- telegramResponse{"Not authorized", chatID}
+				// }
 			case "shot":
 				// https://github.com/suntong/web2image/blob/master/cdp-screenshot.go
 				// https://github.com/chromedp/examples/blob/master/screenshot/main.go
 				if user.Check(db, uint64(userID)) {
-					println("shot")
+					// println("shot")
 					innerChan <- telegramResponse{text, chatID}
 				} else {
 					telegramChan <- telegramResponse{"Not authorized", chatID}
 				}
 			default:
+				log.Printf("[%d] %s, %s, %s", chatID, text, command, args)
 				msg.Text = text
 				msg.ReplyMarkup = commandKeyboard
 				bot.Send(msg)

@@ -170,21 +170,12 @@ func (c *Check) Update(db *bolt.DB) {
 			prettyDiff = ""
 		}
 
-		// println("document changed", c.ID, sum)
 		contains := strings.Contains(string(test), c.Selector)
 
-		// if contains {
-		// 	// println("updated document contains selector", c.ID)
-		// 	telegramChan <- telegramResponse{fmt.Sprintf("ID %d <b>updated document contains selector</b>\n%s", c.ID, prettyDiff), int64(c.UserID)}
-		// } else {
-		// 	// println("updated document NOT contains selector", c.ID)
-		// 	telegramChan <- telegramResponse{fmt.Sprintf("ID %d <b>updated document NOT contains selector</b>\n%s", c.ID, prettyDiff), int64(c.UserID)}
-		// }
-
 		if c.NotifyPresent && !contains {
-			telegramChan <- telegramResponse{fmt.Sprintf("ID %d ALERT (not contains)\n<b>updated document contains selector</b>\n%s", c.ID, prettyDiff), int64(c.UserID)}
+			telegramChan <- telegramResponse{fmt.Sprintf("<b>ID %d ALERT string is not found</b>\n%s", c.ID, prettyDiff), int64(c.UserID)}
 		} else if !c.NotifyPresent && contains {
-			telegramChan <- telegramResponse{fmt.Sprintf("ID %d ALERT (contains)\n<b>updated document NOT contains selector</b>\n%s", c.ID, prettyDiff), int64(c.UserID)}
+			telegramChan <- telegramResponse{fmt.Sprintf("<b>ID %d ALERT string is found</b>\n%s", c.ID, prettyDiff), int64(c.UserID)}
 		}
 
 		c.LastHash = sum
