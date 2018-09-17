@@ -311,7 +311,7 @@ func (c *Check) Delete(db *bolt.DB, requester int64, findID string) (result bool
 	}
 
 	if requester != int64(check.UserID) {
-		return "Not your check"
+		return //"Not your check"
 	}
 
 	err = db.Update(func(tx *bolt.Tx) error {
