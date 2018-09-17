@@ -342,7 +342,39 @@ func (c *Check) Info(db *bolt.DB, findID string) (result string) {
 	}
 	check.PrepareForDisplay()
 
-	return fmt.Sprintf("%d from %d (%t)\nlast checked: %s\nlast changed: %s\nChanges: %v", check.ID, check.UserID, check.IsEnabled, check.LastCheckedPretty, check.LastChangedPretty, check.Diff)
+	return fmt.Sprintf("%d from %d (%t)\nURL: %s\nSearch: %s'\nlast checked: %s\nlast changed: %s\nShow diff: %t\nMust contain string: %t", check.ID, check.UserID, check.IsEnabled, check.URL, check.Selector, check.LastCheckedPretty, check.LastChangedPretty, check.SendDiff, check.NotifyPresent)
+}
+
+func (c *Check) ShowDiff(db *bolt.DB, findID string) (result string) {
+	id, err := strconv.ParseUint(findID, 10, 64)
+	if err != nil {
+		println(err.Error(), http.StatusBadRequest)
+		return "wrong id"
+	}
+
+	check := &Check{}
+	err = db.View(func(tx *bolt.Tx) error {
+		data := tx.Bucket(UrlsBucket).Get(KeyFor(id))
+		if data == nil {
+			return fmt.Errorf("no such check: %d", id)
+		}
+
+		if err := json.Unmarshal(data, check); err != nil {
+			println("error unmarshaling json", err)
+			return err
+		}
+
+		check.ID = id
+		return nil
+	})
+
+	if err != nil {
+		println(err.Error(), http.StatusInternalServerError)
+		return err.Error()
+	}
+	check.PrepareForDisplay()
+
+	return fmt.Sprintf("%v", check.Diff)
 }
 
 func (c *Check) Modify(db *bolt.DB, cron *cron.Cron, findID string, url string, search string, contains string, is_enabled string) {

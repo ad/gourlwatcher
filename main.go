@@ -155,6 +155,13 @@ func main() {
 				} else {
 					telegramChan <- telegramResponse{"Not authorized", chatID}
 				}
+			case "diff":
+				if user.Check(db, uint64(userID)) {
+					println("trying to get diff")
+					innerChan <- telegramResponse{text, chatID}
+				} else {
+					telegramChan <- telegramResponse{"Not authorized", chatID}
+				}
 			case "edit":
 				if user.Check(db, uint64(userID)) {
 					println("edit")
@@ -378,6 +385,18 @@ func doCommand(db *bolt.DB, cron *cron.Cron, innerChan chan telegramResponse, st
 							}
 
 							telegramChan <- telegramResponse{check.Info(db, stringSlice[1]), msg.to}
+						}
+					}
+				} else if strings.HasPrefix(msg.body, "/diff") {
+					stringSlice := strings.Split(msg.body, " ")
+					if len(stringSlice) >= 2 {
+						if _, err := strconv.ParseInt(stringSlice[1], 10, 64); err == nil {
+							// fmt.Printf("%q looks like a number.\n", v)
+							check := Check{
+								Schedule: "0 * * * * *",
+							}
+
+							telegramChan <- telegramResponse{check.ShowDiff(db, stringSlice[1]), msg.to}
 						}
 					}
 				} else if strings.HasPrefix(msg.body, "/add") {
