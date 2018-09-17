@@ -316,9 +316,7 @@ func doCommand(db *bolt.DB, cron *cron.Cron, innerChan chan telegramResponse, st
 					if len(stringSlice) >= 2 {
 						if _, err := strconv.ParseInt(stringSlice[1], 10, 64); err == nil {
 							// fmt.Printf("%q looks like a number.\n", v)
-							check := Check{
-								Schedule: "0 * * * * *",
-							}
+							check := Check{}
 
 							if check.Delete(db, msg.to, stringSlice[1]) {
 								telegramChan <- telegramResponse{"Deleted", msg.to}
@@ -332,15 +330,10 @@ func doCommand(db *bolt.DB, cron *cron.Cron, innerChan chan telegramResponse, st
 					if len(stringSlice) >= 2 {
 						if _, err := strconv.ParseInt(stringSlice[1], 10, 64); err == nil {
 							// fmt.Printf("%q looks like a number.\n", v)
-							check := Check{
-								Schedule: "0 * * * * *",
-							}
+							check := Check{}
 
-							if check.ToggleDiff(db, msg.to, stringSlice[1]) {
-								telegramChan <- telegramResponse{"Diff toggled", msg.to}
-							} else {
-								telegramChan <- telegramResponse{"Not found", msg.to}
-							}
+							check = *check.Get(db, stringSlice[1])
+							telegramChan <- telegramResponse{check.Modify(db, msg.to, int64(check.ID), check.URL, check.Selector, check.NotifyPresent, check.IsEnabled, !check.SendDiff), msg.to}
 						}
 					}
 				} else if strings.HasPrefix(msg.body, "/togglecontains") {
@@ -348,15 +341,10 @@ func doCommand(db *bolt.DB, cron *cron.Cron, innerChan chan telegramResponse, st
 					if len(stringSlice) >= 2 {
 						if _, err := strconv.ParseInt(stringSlice[1], 10, 64); err == nil {
 							// fmt.Printf("%q looks like a number.\n", v)
-							check := Check{
-								Schedule: "0 * * * * *",
-							}
+							check := Check{}
 
-							if check.ToggleContains(db, msg.to, stringSlice[1]) {
-								telegramChan <- telegramResponse{"Contains toggled", msg.to}
-							} else {
-								telegramChan <- telegramResponse{"Not found", msg.to}
-							}
+							check = *check.Get(db, stringSlice[1])
+							telegramChan <- telegramResponse{check.Modify(db, msg.to, int64(check.ID), check.URL, check.Selector, !check.NotifyPresent, check.IsEnabled, check.SendDiff), msg.to}
 						}
 					}
 				} else if strings.HasPrefix(msg.body, "/toggleenabled") {
@@ -364,25 +352,31 @@ func doCommand(db *bolt.DB, cron *cron.Cron, innerChan chan telegramResponse, st
 					if len(stringSlice) >= 2 {
 						if _, err := strconv.ParseInt(stringSlice[1], 10, 64); err == nil {
 							// fmt.Printf("%q looks like a number.\n", v)
-							check := Check{
-								Schedule: "0 * * * * *",
-							}
-
-							if check.ToggleEnabled(db, msg.to, stringSlice[1]) {
-								telegramChan <- telegramResponse{"Enabled toggled", msg.to}
-							} else {
-								telegramChan <- telegramResponse{"Not found", msg.to}
-							}
+							check := Check{}
+							check = *check.Get(db, stringSlice[1])
+							telegramChan <- telegramResponse{check.Modify(db, msg.to, int64(check.ID), check.URL, check.Selector, check.NotifyPresent, !check.IsEnabled, check.SendDiff), msg.to}
 						}
+					}
+				} else if strings.HasPrefix(msg.body, "/updatesearch") {
+					stringSlice := strings.Split(msg.body, "\n\n")
+					if len(stringSlice) >= 2 {
+						commandURL := strings.Split(stringSlice[0], " ")
+						id := commandURL[1]
+						body := strings.Join(stringSlice[1:], "\n\n")
+
+						check := Check{}
+
+						check = *check.Get(db, id)
+						telegramChan <- telegramResponse{check.Modify(db, msg.to, int64(check.ID), check.URL, body, check.NotifyPresent, check.IsEnabled, check.SendDiff), msg.to}
+					} else {
+						telegramChan <- telegramResponse{"please send in format\n/updatesearch id\n\ntext", msg.to}
 					}
 				} else if strings.HasPrefix(msg.body, "/info") {
 					stringSlice := strings.Split(msg.body, " ")
 					if len(stringSlice) >= 2 {
 						if _, err := strconv.ParseInt(stringSlice[1], 10, 64); err == nil {
 							// fmt.Printf("%q looks like a number.\n", v)
-							check := Check{
-								Schedule: "0 * * * * *",
-							}
+							check := Check{}
 
 							telegramChan <- telegramResponse{check.Info(db, msg.to, stringSlice[1]), msg.to}
 						}
@@ -392,9 +386,7 @@ func doCommand(db *bolt.DB, cron *cron.Cron, innerChan chan telegramResponse, st
 					if len(stringSlice) >= 2 {
 						if _, err := strconv.ParseInt(stringSlice[1], 10, 64); err == nil {
 							// fmt.Printf("%q looks like a number.\n", v)
-							check := Check{
-								Schedule: "0 * * * * *",
-							}
+							check := Check{}
 
 							telegramChan <- telegramResponse{check.ShowDiff(db, msg.to, stringSlice[1]), msg.to}
 						}
