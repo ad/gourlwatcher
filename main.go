@@ -169,6 +169,27 @@ func main() {
 				} else {
 					telegramChan <- telegramResponse{"Not authorized", chatID}
 				}
+			case "togglediff":
+				if user.Check(db, uint64(userID)) {
+					println("toggle diff")
+					innerChan <- telegramResponse{text, chatID}
+				} else {
+					telegramChan <- telegramResponse{"Not authorized", chatID}
+				}
+			case "togglecontains":
+				if user.Check(db, uint64(userID)) {
+					println("toggle contains")
+					innerChan <- telegramResponse{text, chatID}
+				} else {
+					telegramChan <- telegramResponse{"Not authorized", chatID}
+				}
+			case "toggleenabled":
+				if user.Check(db, uint64(userID)) {
+					println("toggle enabled")
+					innerChan <- telegramResponse{text, chatID}
+				} else {
+					telegramChan <- telegramResponse{"Not authorized", chatID}
+				}
 			case "shot":
 				// https://github.com/suntong/web2image/blob/master/cdp-screenshot.go
 				// https://github.com/chromedp/examples/blob/master/screenshot/main.go
@@ -188,20 +209,29 @@ func main() {
 			// if len(resp.body) >= 2000 {
 
 			// }
-			resp.body = strings.Replace(string(resp.body), "<span>", "<code>", -1)
-			resp.body = strings.Replace(string(resp.body), "</span>", "</code>", -1)
+			resp.body = strings.Replace(string(resp.body), "<span>", "", -1)
+			resp.body = strings.Replace(string(resp.body), "</span>", "", -1)
 			resp.body = strings.Replace(string(resp.body), "<del ", "<i ", -1)
 			resp.body = strings.Replace(string(resp.body), "</del>", "</i>", -1)
 			resp.body = strings.Replace(string(resp.body), "<ins ", "<b ", -1)
 			resp.body = strings.Replace(string(resp.body), "</ins>", "</b>", -1)
 			resp.body = strings.Replace(string(resp.body), "<br>", "\n", -1)
 
-			messages := SplitSubN(resp.body, 2500)
+			messages := SplitSubN(resp.body, 4000)
 			for _, message := range messages {
+				// if !strings.HasPrefix(message, "<pre>") {
+				// 	message = "<pre>" + message
+				// }
+				// if !strings.HasSuffix(message, "\n</pre>") {
+				// 	message = strings.Trim(message, "\n\t ") + "</pre>"
+				// }
+
 				log.Println(resp.to, message)
+
 				msg := tgbotapi.NewMessage(resp.to, message)
 				msg.DisableWebPagePreview = true
 				msg.ParseMode = "HTML"
+				msg.DisableNotification = true
 				_, err := bot.Send(msg)
 				if err != nil {
 					println(err.Error())
@@ -287,6 +317,54 @@ func doCommand(db *bolt.DB, cron *cron.Cron, innerChan chan telegramResponse, st
 								telegramChan <- telegramResponse{"Deleted", msg.to}
 							} else {
 								telegramChan <- telegramResponse{"Not deleted", msg.to}
+							}
+						}
+					}
+				} else if strings.HasPrefix(msg.body, "/togglediff") {
+					stringSlice := strings.Split(msg.body, " ")
+					if len(stringSlice) >= 2 {
+						if _, err := strconv.ParseInt(stringSlice[1], 10, 64); err == nil {
+							// fmt.Printf("%q looks like a number.\n", v)
+							check := Check{
+								Schedule: "0 * * * * *",
+							}
+
+							if check.ToggleDiff(db, stringSlice[1]) {
+								telegramChan <- telegramResponse{"Diff toggled", msg.to}
+							} else {
+								telegramChan <- telegramResponse{"Not found", msg.to}
+							}
+						}
+					}
+				} else if strings.HasPrefix(msg.body, "/togglecontains") {
+					stringSlice := strings.Split(msg.body, " ")
+					if len(stringSlice) >= 2 {
+						if _, err := strconv.ParseInt(stringSlice[1], 10, 64); err == nil {
+							// fmt.Printf("%q looks like a number.\n", v)
+							check := Check{
+								Schedule: "0 * * * * *",
+							}
+
+							if check.ToggleContains(db, stringSlice[1]) {
+								telegramChan <- telegramResponse{"Contains toggled", msg.to}
+							} else {
+								telegramChan <- telegramResponse{"Not found", msg.to}
+							}
+						}
+					}
+				} else if strings.HasPrefix(msg.body, "/toggleenabled") {
+					stringSlice := strings.Split(msg.body, " ")
+					if len(stringSlice) >= 2 {
+						if _, err := strconv.ParseInt(stringSlice[1], 10, 64); err == nil {
+							// fmt.Printf("%q looks like a number.\n", v)
+							check := Check{
+								Schedule: "0 * * * * *",
+							}
+
+							if check.ToggleEnabled(db, stringSlice[1]) {
+								telegramChan <- telegramResponse{"Enabled toggled", msg.to}
+							} else {
+								telegramChan <- telegramResponse{"Not found", msg.to}
 							}
 						}
 					}

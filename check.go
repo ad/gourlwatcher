@@ -33,6 +33,7 @@ type Check struct {
 	IsEnabled     bool      `json:"is_enabled"`
 	Content       string    `json:"content"`
 	Diff          string    `json:"diff"`
+	SendDiff      bool      `json:"send_diff"`
 
 	// The last-checked date, as a string.
 	LastCheckedPretty string `json:"-"`
@@ -165,16 +166,19 @@ func (c *Check) Update(db *bolt.DB) {
 		diffs := dmp.DiffMain(oldContent, c.Content, false)
 		prettyDiff := dmp.DiffPrettyHtml(diffs)
 		c.Diff = prettyDiff
+		if !c.SendDiff {
+			prettyDiff = ""
+		}
 
 		// println("document changed", c.ID, sum)
 		contains := strings.Contains(string(test), c.Selector)
 
 		if contains {
 			// println("updated document contains selector", c.ID)
-			telegramChan <- telegramResponse{"<b>updated document contains selector</b>\n" + prettyDiff, int64(c.UserID)}
+			telegramChan <- telegramResponse{fmt.Sprintf("ID %d <b>updated document contains selector</b>\n%s", c.ID, prettyDiff), int64(c.UserID)}
 		} else {
 			// println("updated document NOT contains selector", c.ID)
-			telegramChan <- telegramResponse{"<b>updated document NOT contains selector</b>\n" + prettyDiff, int64(c.UserID)}
+			telegramChan <- telegramResponse{fmt.Sprintf("ID %d <b>updated document NOT contains selector</b>\n%s", c.ID, prettyDiff), int64(c.UserID)}
 		}
 
 		if c.NotifyPresent && !contains {
@@ -410,6 +414,156 @@ func (c *Check) Modify(db *bolt.DB, cron *cron.Cron, findID string, url string, 
 		println(err.Error(), http.StatusBadRequest)
 		return
 	}
+}
+
+func (c *Check) ToggleDiff(db *bolt.DB, findID string) (result bool) {
+
+	id, err := strconv.ParseUint(findID, 10, 64)
+	if err != nil {
+		println(err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	check := &Check{}
+	err = db.View(func(tx *bolt.Tx) error {
+		data := tx.Bucket(UrlsBucket).Get(KeyFor(id))
+		if data == nil {
+			return fmt.Errorf("no such check: %d", id)
+		}
+
+		if err := json.Unmarshal(data, check); err != nil {
+			println("error unmarshaling json", err)
+			return err
+		}
+
+		check.ID = id
+		return nil
+	})
+
+	if err != nil {
+		println(err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	check.SendDiff = !check.SendDiff
+
+	err = db.Update(func(tx *bolt.Tx) error {
+		data, err := json.Marshal(check)
+		if err != nil {
+			return err
+		}
+
+		if err = tx.Bucket(UrlsBucket).Put(KeyFor(check.ID), data); err != nil {
+			return err
+		}
+		return nil
+	})
+
+	if err != nil {
+		println(err.Error(), http.StatusBadRequest)
+		return
+	}
+	return true
+}
+
+func (c *Check) ToggleEnabled(db *bolt.DB, findID string) (result bool) {
+
+	id, err := strconv.ParseUint(findID, 10, 64)
+	if err != nil {
+		println(err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	check := &Check{}
+	err = db.View(func(tx *bolt.Tx) error {
+		data := tx.Bucket(UrlsBucket).Get(KeyFor(id))
+		if data == nil {
+			return fmt.Errorf("no such check: %d", id)
+		}
+
+		if err := json.Unmarshal(data, check); err != nil {
+			println("error unmarshaling json", err)
+			return err
+		}
+
+		check.ID = id
+		return nil
+	})
+
+	if err != nil {
+		println(err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	check.IsEnabled = !check.IsEnabled
+
+	err = db.Update(func(tx *bolt.Tx) error {
+		data, err := json.Marshal(check)
+		if err != nil {
+			return err
+		}
+
+		if err = tx.Bucket(UrlsBucket).Put(KeyFor(check.ID), data); err != nil {
+			return err
+		}
+		return nil
+	})
+
+	if err != nil {
+		println(err.Error(), http.StatusBadRequest)
+		return
+	}
+	return true
+}
+
+func (c *Check) ToggleContains(db *bolt.DB, findID string) (result bool) {
+
+	id, err := strconv.ParseUint(findID, 10, 64)
+	if err != nil {
+		println(err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	check := &Check{}
+	err = db.View(func(tx *bolt.Tx) error {
+		data := tx.Bucket(UrlsBucket).Get(KeyFor(id))
+		if data == nil {
+			return fmt.Errorf("no such check: %d", id)
+		}
+
+		if err := json.Unmarshal(data, check); err != nil {
+			println("error unmarshaling json", err)
+			return err
+		}
+
+		check.ID = id
+		return nil
+	})
+
+	if err != nil {
+		println(err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	check.NotifyPresent = !check.NotifyPresent
+
+	err = db.Update(func(tx *bolt.Tx) error {
+		data, err := json.Marshal(check)
+		if err != nil {
+			return err
+		}
+
+		if err = tx.Bucket(UrlsBucket).Put(KeyFor(check.ID), data); err != nil {
+			return err
+		}
+		return nil
+	})
+
+	if err != nil {
+		println(err.Error(), http.StatusBadRequest)
+		return
+	}
+	return true
 }
 
 func (c *User) New(db *bolt.DB, id uint64) (result bool) {
