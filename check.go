@@ -173,18 +173,18 @@ func (c *Check) Update(db *bolt.DB) {
 		// println("document changed", c.ID, sum)
 		contains := strings.Contains(string(test), c.Selector)
 
-		if contains {
-			// println("updated document contains selector", c.ID)
-			telegramChan <- telegramResponse{fmt.Sprintf("ID %d <b>updated document contains selector</b>\n%s", c.ID, prettyDiff), int64(c.UserID)}
-		} else {
-			// println("updated document NOT contains selector", c.ID)
-			telegramChan <- telegramResponse{fmt.Sprintf("ID %d <b>updated document NOT contains selector</b>\n%s", c.ID, prettyDiff), int64(c.UserID)}
-		}
+		// if contains {
+		// 	// println("updated document contains selector", c.ID)
+		// 	telegramChan <- telegramResponse{fmt.Sprintf("ID %d <b>updated document contains selector</b>\n%s", c.ID, prettyDiff), int64(c.UserID)}
+		// } else {
+		// 	// println("updated document NOT contains selector", c.ID)
+		// 	telegramChan <- telegramResponse{fmt.Sprintf("ID %d <b>updated document NOT contains selector</b>\n%s", c.ID, prettyDiff), int64(c.UserID)}
+		// }
 
 		if c.NotifyPresent && !contains {
-			println("ALERT (not contains)")
+			telegramChan <- telegramResponse{fmt.Sprintf("ID %d ALERT (not contains)\n<b>updated document contains selector</b>\n%s", c.ID, prettyDiff), int64(c.UserID)}
 		} else if !c.NotifyPresent && contains {
-			println("ALERT (contains)")
+			telegramChan <- telegramResponse{fmt.Sprintf("ID %d ALERT (contains)\n<b>updated document NOT contains selector</b>\n%s", c.ID, prettyDiff), int64(c.UserID)}
 		}
 
 		c.LastHash = sum
@@ -283,24 +283,35 @@ func (c *Check) New(db *bolt.DB, cron *cron.Cron, url string, search string, con
 	return true
 }
 
-func (c *Check) Delete(db *bolt.DB, findID string) (result bool) {
+func (c *Check) Delete(db *bolt.DB, requester int64, findID string) (result bool) {
 	id, err := strconv.ParseUint(findID, 10, 64)
 	if err != nil {
 		println(err.Error(), http.StatusBadRequest)
 		return false
 	}
 
+	check := &Check{}
 	err = db.View(func(tx *bolt.Tx) error {
 		data := tx.Bucket(UrlsBucket).Get(KeyFor(id))
 		if data == nil {
 			return fmt.Errorf("no such check: %d", id)
 		}
+		if err := json.Unmarshal(data, check); err != nil {
+			println("error unmarshaling json", err)
+			return err
+		}
+
+		check.ID = id
 		return nil
 	})
 
 	if err != nil {
 		println(err.Error(), http.StatusInternalServerError)
 		return false
+	}
+
+	if requester != int64(check.UserID) {
+		return "Not your check"
 	}
 
 	err = db.Update(func(tx *bolt.Tx) error {
@@ -313,7 +324,7 @@ func (c *Check) Delete(db *bolt.DB, findID string) (result bool) {
 	return true
 }
 
-func (c *Check) Info(db *bolt.DB, findID string) (result string) {
+func (c *Check) Info(db *bolt.DB, requester int64, findID string) (result string) {
 	id, err := strconv.ParseUint(findID, 10, 64)
 	if err != nil {
 		println(err.Error(), http.StatusBadRequest)
@@ -340,12 +351,17 @@ func (c *Check) Info(db *bolt.DB, findID string) (result string) {
 		println(err.Error(), http.StatusInternalServerError)
 		return err.Error()
 	}
+
+	if requester != int64(check.UserID) {
+		return "Not your check"
+	}
+
 	check.PrepareForDisplay()
 
 	return fmt.Sprintf("%d from %d (%t)\nURL: %s\nSearch: %s\nlast checked: %s\nlast changed: %s\nShow diff: %t\nMust contain string: %t", check.ID, check.UserID, check.IsEnabled, check.URL, check.Selector, check.LastCheckedPretty, check.LastChangedPretty, check.SendDiff, check.NotifyPresent)
 }
 
-func (c *Check) ShowDiff(db *bolt.DB, findID string) (result string) {
+func (c *Check) ShowDiff(db *bolt.DB, requester int64, findID string) (result string) {
 	id, err := strconv.ParseUint(findID, 10, 64)
 	if err != nil {
 		println(err.Error(), http.StatusBadRequest)
@@ -372,12 +388,21 @@ func (c *Check) ShowDiff(db *bolt.DB, findID string) (result string) {
 		println(err.Error(), http.StatusInternalServerError)
 		return err.Error()
 	}
+
+	if requester != int64(check.UserID) {
+		return "Not your check"
+	}
+
+	if requester != int64(check.UserID) {
+		return "Not your check"
+	}
+
 	check.PrepareForDisplay()
 
 	return fmt.Sprintf("%v", check.Diff)
 }
 
-func (c *Check) Modify(db *bolt.DB, cron *cron.Cron, findID string, url string, search string, contains string, is_enabled string) {
+func (c *Check) Modify(db *bolt.DB, cron *cron.Cron, requester int64, findID string, url string, search string, contains string, is_enabled string) {
 
 	id, err := strconv.ParseUint(findID, 10, 64)
 	if err != nil {
@@ -404,6 +429,10 @@ func (c *Check) Modify(db *bolt.DB, cron *cron.Cron, findID string, url string, 
 	if err != nil {
 		println(err.Error(), http.StatusBadRequest)
 		return
+	}
+
+	if requester != int64(check.UserID) {
+		return // "Not your check"
 	}
 
 	// Update each of the fields in the check
@@ -448,7 +477,7 @@ func (c *Check) Modify(db *bolt.DB, cron *cron.Cron, findID string, url string, 
 	}
 }
 
-func (c *Check) ToggleDiff(db *bolt.DB, findID string) (result bool) {
+func (c *Check) ToggleDiff(db *bolt.DB, requester int64, findID string) (result bool) {
 
 	id, err := strconv.ParseUint(findID, 10, 64)
 	if err != nil {
@@ -475,6 +504,10 @@ func (c *Check) ToggleDiff(db *bolt.DB, findID string) (result bool) {
 	if err != nil {
 		println(err.Error(), http.StatusBadRequest)
 		return
+	}
+
+	if requester != int64(check.UserID) {
+		return // "Not your check"
 	}
 
 	check.SendDiff = !check.SendDiff
@@ -498,7 +531,7 @@ func (c *Check) ToggleDiff(db *bolt.DB, findID string) (result bool) {
 	return true
 }
 
-func (c *Check) ToggleEnabled(db *bolt.DB, findID string) (result bool) {
+func (c *Check) ToggleEnabled(db *bolt.DB, requester int64, findID string) (result bool) {
 
 	id, err := strconv.ParseUint(findID, 10, 64)
 	if err != nil {
@@ -525,6 +558,10 @@ func (c *Check) ToggleEnabled(db *bolt.DB, findID string) (result bool) {
 	if err != nil {
 		println(err.Error(), http.StatusBadRequest)
 		return
+	}
+
+	if requester != int64(check.UserID) {
+		return // "Not your check"
 	}
 
 	check.IsEnabled = !check.IsEnabled
@@ -548,7 +585,7 @@ func (c *Check) ToggleEnabled(db *bolt.DB, findID string) (result bool) {
 	return true
 }
 
-func (c *Check) ToggleContains(db *bolt.DB, findID string) (result bool) {
+func (c *Check) ToggleContains(db *bolt.DB, requester int64, findID string) (result bool) {
 
 	id, err := strconv.ParseUint(findID, 10, 64)
 	if err != nil {
@@ -575,6 +612,10 @@ func (c *Check) ToggleContains(db *bolt.DB, findID string) (result bool) {
 	if err != nil {
 		println(err.Error(), http.StatusBadRequest)
 		return
+	}
+
+	if requester != int64(check.UserID) {
+		return // "Not your check"
 	}
 
 	check.NotifyPresent = !check.NotifyPresent

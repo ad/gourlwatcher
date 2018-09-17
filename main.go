@@ -320,7 +320,7 @@ func doCommand(db *bolt.DB, cron *cron.Cron, innerChan chan telegramResponse, st
 								Schedule: "0 * * * * *",
 							}
 
-							if check.Delete(db, stringSlice[1]) {
+							if check.Delete(db, msg.to, stringSlice[1]) {
 								telegramChan <- telegramResponse{"Deleted", msg.to}
 							} else {
 								telegramChan <- telegramResponse{"Not deleted", msg.to}
@@ -336,7 +336,7 @@ func doCommand(db *bolt.DB, cron *cron.Cron, innerChan chan telegramResponse, st
 								Schedule: "0 * * * * *",
 							}
 
-							if check.ToggleDiff(db, stringSlice[1]) {
+							if check.ToggleDiff(db, msg.to, stringSlice[1]) {
 								telegramChan <- telegramResponse{"Diff toggled", msg.to}
 							} else {
 								telegramChan <- telegramResponse{"Not found", msg.to}
@@ -352,7 +352,7 @@ func doCommand(db *bolt.DB, cron *cron.Cron, innerChan chan telegramResponse, st
 								Schedule: "0 * * * * *",
 							}
 
-							if check.ToggleContains(db, stringSlice[1]) {
+							if check.ToggleContains(db, msg.to, stringSlice[1]) {
 								telegramChan <- telegramResponse{"Contains toggled", msg.to}
 							} else {
 								telegramChan <- telegramResponse{"Not found", msg.to}
@@ -368,7 +368,7 @@ func doCommand(db *bolt.DB, cron *cron.Cron, innerChan chan telegramResponse, st
 								Schedule: "0 * * * * *",
 							}
 
-							if check.ToggleEnabled(db, stringSlice[1]) {
+							if check.ToggleEnabled(db, msg.to, stringSlice[1]) {
 								telegramChan <- telegramResponse{"Enabled toggled", msg.to}
 							} else {
 								telegramChan <- telegramResponse{"Not found", msg.to}
@@ -384,7 +384,7 @@ func doCommand(db *bolt.DB, cron *cron.Cron, innerChan chan telegramResponse, st
 								Schedule: "0 * * * * *",
 							}
 
-							telegramChan <- telegramResponse{check.Info(db, stringSlice[1]), msg.to}
+							telegramChan <- telegramResponse{check.Info(db, msg.to, stringSlice[1]), msg.to}
 						}
 					}
 				} else if strings.HasPrefix(msg.body, "/diff") {
@@ -396,7 +396,7 @@ func doCommand(db *bolt.DB, cron *cron.Cron, innerChan chan telegramResponse, st
 								Schedule: "0 * * * * *",
 							}
 
-							telegramChan <- telegramResponse{check.ShowDiff(db, stringSlice[1]), msg.to}
+							telegramChan <- telegramResponse{check.ShowDiff(db, msg.to, stringSlice[1]), msg.to}
 						}
 					}
 				} else if strings.HasPrefix(msg.body, "/add") {
