@@ -194,6 +194,7 @@ func main() {
 			resp.body = strings.Replace(string(resp.body), "</del>", "</i>", -1)
 			resp.body = strings.Replace(string(resp.body), "<ins ", "<b ", -1)
 			resp.body = strings.Replace(string(resp.body), "</ins>", "</b>", -1)
+			resp.body = strings.Replace(string(resp.body), "<br>", "\n", -1)
 
 			messages := SplitSubN(resp.body, 2500)
 			for _, message := range messages {
