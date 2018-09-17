@@ -163,7 +163,7 @@ func (c *Check) Update(db *bolt.DB) {
 
 		dmp := diffmatchpatch.New()
 		diffs := dmp.DiffMain(oldContent, c.Content, false)
-		prettyDiff := dmp.DiffText1(diffs)
+		prettyDiff := dmp.DiffPrettyHtml(diffs)
 		c.Diff = prettyDiff
 
 		// println("document changed", c.ID, sum)
@@ -171,10 +171,10 @@ func (c *Check) Update(db *bolt.DB) {
 
 		if contains {
 			// println("updated document contains selector", c.ID)
-			telegramChan <- telegramResponse{"updated document contains selector\n" + prettyDiff, int64(c.UserID)}
+			telegramChan <- telegramResponse{"<b>updated document contains selector</b>\n" + prettyDiff, int64(c.UserID)}
 		} else {
 			// println("updated document NOT contains selector", c.ID)
-			telegramChan <- telegramResponse{"updated document NOT contains selector\n" + prettyDiff, int64(c.UserID)}
+			telegramChan <- telegramResponse{"<b>updated document NOT contains selector</b>\n" + prettyDiff, int64(c.UserID)}
 		}
 
 		if c.NotifyPresent && !contains {

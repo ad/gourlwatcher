@@ -185,15 +185,22 @@ func main() {
 			}
 			// }
 		case resp := <-telegramChan:
-			log.Println(resp.to, resp.body)
-
 			// if len(resp.body) >= 2000 {
 
 			// }
-			messages := SplitSubN(resp.body, 3000)
+			resp.body = strings.Replace(string(resp.body), "<span>", "<code>", -1)
+			resp.body = strings.Replace(string(resp.body), "</span>", "</code>", -1)
+			resp.body = strings.Replace(string(resp.body), "<del ", "<i ", -1)
+			resp.body = strings.Replace(string(resp.body), "</del>", "</i>", -1)
+			resp.body = strings.Replace(string(resp.body), "<ins ", "<b ", -1)
+			resp.body = strings.Replace(string(resp.body), "</ins>", "</b>", -1)
+
+			messages := SplitSubN(resp.body, 2500)
 			for _, message := range messages {
+				log.Println(resp.to, message)
 				msg := tgbotapi.NewMessage(resp.to, message)
 				msg.DisableWebPagePreview = true
+				msg.ParseMode = "HTML"
 				_, err := bot.Send(msg)
 				if err != nil {
 					println(err.Error())
