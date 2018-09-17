@@ -190,12 +190,13 @@ func main() {
 			// if len(resp.body) >= 2000 {
 
 			// }
-			messages := SplitSubN(resp.body, 2000)
+			messages := SplitSubN(resp.body, 3000)
 			for _, message := range messages {
 				msg := tgbotapi.NewMessage(resp.to, message)
+				msg.DisableWebPagePreview = true
 				_, err := bot.Send(msg)
 				if err != nil {
-					println(err)
+					println(err.Error())
 				}
 			}
 		}
