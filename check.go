@@ -15,6 +15,7 @@ import (
 
 	"github.com/boltdb/bolt"
 	"github.com/robfig/cron"
+	"github.com/sergi/go-diff/diffmatchpatch"
 )
 
 // Helper struct for serialization.
@@ -30,6 +31,8 @@ type Check struct {
 	SeenChange    bool      `json:"seen"`
 	NotifyPresent bool      `json:"is_present"`
 	IsEnabled     bool      `json:"is_enabled"`
+	Content       string    `json:"content"`
+	Diff          string    `json:"diff"`
 
 	// The last-checked date, as a string.
 	LastCheckedPretty string `json:"-"`
@@ -108,7 +111,7 @@ func GetAllChecks(db *bolt.DB, output *[]*Check) error {
 }
 
 func (c *Check) Update(db *bolt.DB) {
-	// println("Requesting page id", c.ID, "last checked", c.LastCheckedPretty, "last changed", c.LastChangedPretty, "must", (c.NotifyPresent), "contain", c.Selector, c.ShortHash)
+	println("Requesting page id", c.ID, "last checked", c.LastCheckedPretty, "last changed", c.LastChangedPretty, "must", (c.NotifyPresent), "contain", c.Selector, c.ShortHash)
 
 	resp, err := http.Get(c.URL)
 	if err != nil {
@@ -117,12 +120,21 @@ func (c *Check) Update(db *bolt.DB) {
 	}
 
 	defer resp.Body.Close()
+
+	if resp.StatusCode < 200 || resp.StatusCode > 299 {
+		println("error status check", c.ID, c.URL, resp.StatusCode)
+		return
+	}
+
 	test, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		println("error", err.Error())
 		return
 		// os.Exit(1)
 	}
+
+	oldContent := c.Content
+	c.Content = string(test)
 
 	// println(string(test))
 
@@ -148,15 +160,21 @@ func (c *Check) Update(db *bolt.DB) {
 
 	// Check for update
 	if c.LastHash != sum {
+
+		dmp := diffmatchpatch.New()
+		diffs := dmp.DiffMain(oldContent, c.Content, false)
+		prettyDiff := dmp.DiffText2(diffs)
+		c.Diff = prettyDiff
+
 		// println("document changed", c.ID, sum)
 		contains := strings.Contains(string(test), c.Selector)
 
 		if contains {
 			// println("updated document contains selector", c.ID)
-			telegramChan <- telegramResponse{"updated document contains selector", int64(c.UserID)}
+			telegramChan <- telegramResponse{"updated document contains selector\n" + prettyDiff, int64(c.UserID)}
 		} else {
 			// println("updated document NOT contains selector", c.ID)
-			telegramChan <- telegramResponse{"updated document NOT contains selector", int64(c.UserID)}
+			telegramChan <- telegramResponse{"updated document NOT contains selector\n" + prettyDiff, int64(c.UserID)}
 		}
 
 		if c.NotifyPresent && !contains {
@@ -192,7 +210,7 @@ func (c *Check) Update(db *bolt.DB) {
 	})
 }
 
-func (c *Check) New(db *bolt.DB, cron *cron.Cron, url string, search string, contains string) (result bool) {
+func (c *Check) New(db *bolt.DB, cron *cron.Cron, url string, search string, contains string, userID int64) (result bool) {
 	println("adding new check", url, search)
 
 	if len(url) == 0 {
@@ -209,10 +227,17 @@ func (c *Check) New(db *bolt.DB, cron *cron.Cron, url string, search string, con
 		return false
 	}
 
+	if userID <= 0 {
+		println("missing userid parameter", http.StatusBadRequest)
+		return false
+	}
+
 	check := Check{
-		URL:      url,
-		Selector: search,
-		Schedule: "0 * * * * *",
+		URL:       url,
+		Selector:  search,
+		Schedule:  "0 * * * * *",
+		UserID:    uint64(userID),
+		IsEnabled: true,
 	}
 
 	check.NotifyPresent = contains == "true"
@@ -282,6 +307,38 @@ func (c *Check) Delete(db *bolt.DB, findID string) (result bool) {
 		return false
 	}
 	return true
+}
+
+func (c *Check) Info(db *bolt.DB, findID string) (result string) {
+	id, err := strconv.ParseUint(findID, 10, 64)
+	if err != nil {
+		println(err.Error(), http.StatusBadRequest)
+		return "wrong id"
+	}
+
+	check := &Check{}
+	err = db.View(func(tx *bolt.Tx) error {
+		data := tx.Bucket(UrlsBucket).Get(KeyFor(id))
+		if data == nil {
+			return fmt.Errorf("no such check: %d", id)
+		}
+
+		if err := json.Unmarshal(data, check); err != nil {
+			println("error unmarshaling json", err)
+			return err
+		}
+
+		check.ID = id
+		return nil
+	})
+
+	if err != nil {
+		println(err.Error(), http.StatusInternalServerError)
+		return err.Error()
+	}
+	check.PrepareForDisplay()
+
+	return fmt.Sprintf("%d from %d (%t)\nlast checked: %s\nlast changed: %s\nChanges: %v", check.ID, check.UserID, check.IsEnabled, check.LastCheckedPretty, check.LastChangedPretty, check.Diff)
 }
 
 func (c *Check) Modify(db *bolt.DB, cron *cron.Cron, findID string, url string, search string, contains string, is_enabled string) {

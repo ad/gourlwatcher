@@ -95,6 +95,8 @@ func main() {
 	var items []*Check
 	if err = GetAllChecks(db, &items); err != nil {
 		println("error loading checks", err)
+	} else {
+		println("loaded", len(items), "check(s)")
 	}
 
 	for _, v := range items {
@@ -140,7 +142,14 @@ func main() {
 				}
 			case "add":
 				if user.Check(db, uint64(userID)) {
-					println("add")
+					println("trying to add new check")
+					innerChan <- telegramResponse{text, chatID}
+				} else {
+					telegramChan <- telegramResponse{"Not authorized", chatID}
+				}
+			case "info":
+				if user.Check(db, uint64(userID)) {
+					println("trying to get info")
 					innerChan <- telegramResponse{text, chatID}
 				} else {
 					telegramChan <- telegramResponse{"Not authorized", chatID}
@@ -219,7 +228,7 @@ func TryUpdate(db *bolt.DB, id uint64) {
 	}
 
 	check.PrepareForDisplay()
-	// Got a check.  Trigger an update.
+	println("Got a check.  Trigger an update.", check.ID, check.UserID)
 	go check.Update(db)
 }
 
@@ -265,6 +274,18 @@ func doCommand(db *bolt.DB, cron *cron.Cron, innerChan chan telegramResponse, st
 							}
 						}
 					}
+				} else if strings.HasPrefix(msg.body, "/info") {
+					stringSlice := strings.Split(msg.body, " ")
+					if len(stringSlice) >= 2 {
+						if _, err := strconv.ParseInt(stringSlice[1], 10, 64); err == nil {
+							// fmt.Printf("%q looks like a number.\n", v)
+							check := Check{
+								Schedule: "0 * * * * *",
+							}
+
+							telegramChan <- telegramResponse{check.Info(db, stringSlice[1]), msg.to}
+						}
+					}
 				} else if strings.HasPrefix(msg.body, "/add") {
 					stringSlice := strings.Split(msg.body, "\n\n")
 					if len(stringSlice) >= 2 {
@@ -276,11 +297,13 @@ func doCommand(db *bolt.DB, cron *cron.Cron, innerChan chan telegramResponse, st
 							Schedule: "0 * * * * *",
 						}
 
-						if check.New(db, cron, url, body, "true") {
+						if check.New(db, cron, url, body, "true", msg.to) {
 							telegramChan <- telegramResponse{"Added", msg.to}
 						} else {
 							telegramChan <- telegramResponse{"Not added", msg.to}
 						}
+					} else {
+						telegramChan <- telegramResponse{"please send in format\n/add url\n\ntext", msg.to}
 					}
 				}
 				stopChan <- msg.to
