@@ -12,6 +12,16 @@ nohup gourlwatcher -token telegram:token -secret auth_secret &
 
 /delete url_id
 
+/toggleenabled url_id
+
+/togglecontains url_id
+
+/togglediff url_id
+
+/info url_id
+
+/diff url_id
+
 /add url
 
-searchstring
+check string in result body
