@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -186,10 +187,16 @@ func main() {
 		case resp := <-telegramChan:
 			log.Println(resp.to, resp.body)
 
-			msg := tgbotapi.NewMessage(resp.to, resp.body)
-			_, err := bot.Send(msg)
-			if err == nil {
+			// if len(resp.body) >= 2000 {
 
+			// }
+			messages := SplitSubN(resp.body, 2000)
+			for _, message := range messages {
+				msg := tgbotapi.NewMessage(resp.to, message)
+				_, err := bot.Send(msg)
+				if err != nil {
+					println(err)
+				}
 			}
 		}
 	}
@@ -228,7 +235,7 @@ func TryUpdate(db *bolt.DB, id uint64) {
 	}
 
 	check.PrepareForDisplay()
-	println("Got a check.  Trigger an update.", check.ID, check.UserID)
+	// println("Got a check.  Trigger an update.", check.ID, check.UserID)
 	go check.Update(db)
 }
 
@@ -313,4 +320,23 @@ func doCommand(db *bolt.DB, cron *cron.Cron, innerChan chan telegramResponse, st
 			// telegramChan <- telegramResponse{"stop", id}
 		}
 	}
+}
+
+func SplitSubN(s string, n int) []string {
+	sub := ""
+	subs := []string{}
+
+	runes := bytes.Runes([]byte(s))
+	l := len(runes)
+	for i, r := range runes {
+		sub = sub + string(r)
+		if (i+1)%n == 0 {
+			subs = append(subs, sub)
+			sub = ""
+		} else if (i + 1) == l {
+			subs = append(subs, sub)
+		}
+	}
+
+	return subs
 }

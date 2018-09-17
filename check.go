@@ -111,7 +111,7 @@ func GetAllChecks(db *bolt.DB, output *[]*Check) error {
 }
 
 func (c *Check) Update(db *bolt.DB) {
-	println("Requesting page id", c.ID, "last checked", c.LastCheckedPretty, "last changed", c.LastChangedPretty, "must", (c.NotifyPresent), "contain", c.Selector, c.ShortHash)
+	// println("Requesting page id", c.ID, "last checked", c.LastCheckedPretty, "last changed", c.LastChangedPretty, "must", (c.NotifyPresent), "contain", c.Selector, c.ShortHash)
 
 	resp, err := http.Get(c.URL)
 	if err != nil {
@@ -163,7 +163,7 @@ func (c *Check) Update(db *bolt.DB) {
 
 		dmp := diffmatchpatch.New()
 		diffs := dmp.DiffMain(oldContent, c.Content, false)
-		prettyDiff := dmp.DiffText2(diffs)
+		prettyDiff := dmp.DiffText1(diffs)
 		c.Diff = prettyDiff
 
 		// println("document changed", c.ID, sum)
