@@ -475,15 +475,19 @@ func Short(s string, i int) string {
 }
 
 func initKeyboard(db *bolt.DB, check_id int64) (commandKeyboard tgbotapi.InlineKeyboardMarkup) {
+	check := &Check{}
+	check = check.Get(db, strconv.FormatInt(check_id, 10))
+
+	if check == nil {
+		return
+	}
+
 	info := fmt.Sprintf("/%s %d", "info", check_id)
 	delete := fmt.Sprintf("/%s %d", "delete", check_id)
 
 	togglecontains := fmt.Sprintf("/%s %d", "togglecontains", check_id)
 	toggleenabled := fmt.Sprintf("/%s %d", "toggleenabled", check_id)
 	togglerecovered := fmt.Sprintf("/%s %d", "togglerecovered", check_id)
-
-	check := &Check{}
-	check = check.Get(db, strconv.FormatInt(check_id, 10))
 
 	containsState := "Alert if found"
 	if check.AlertIfPresent {
