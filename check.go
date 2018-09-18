@@ -180,32 +180,10 @@ func (c *Check) Update(db *bolt.DB) {
 	if err != nil {
 		println("error", err.Error())
 		return
-		// os.Exit(1)
 	}
 
 	text := string(test) //Short(string(test), 81920)
 	c.Content = text
-
-	// println("old size", len(string(test)), "new size", len(text))
-
-	// println(text)
-
-	// println(string(test))
-
-	// TODO: replace with str search
-	// test := resp. // sel.Text(
-	// doc, err := goquery.NewDocumentFromResponse(resp)
-	// if err != nil {
-	// 	println("error parsing check", c.ID, err)
-	// 	return
-	// }
-
-	// // Get all nodes matching the given selector
-	// sel := doc.Find(c.Selector)
-	// if sel.Length() == 0 {
-	// 	println("error in check: no nodes in selection", c.ID, c.Selector)
-	// 	return
-	// }
 
 	// Hash the content
 	hash := sha256.New()
@@ -216,18 +194,47 @@ func (c *Check) Update(db *bolt.DB) {
 	if c.LastHash != sum {
 		contains := strings.Contains(text, c.Selector)
 
-		if c.AlertIfPresent && !contains {
-			telegramChan <- telegramResponse{fmt.Sprintf("/%d <b>%s</b> <i>NOT found</i>", c.ID, c.Title), int64(c.UserID)}
-		} else if !c.AlertIfPresent && contains {
-			telegramChan <- telegramResponse{fmt.Sprintf("/%d <b>%s</b> <i>found</i>", c.ID, c.Title), int64(c.UserID)}
+		oldRecovered := c.IsRecovered
+
+		if !c.IsRecovered && contains && c.AlertIfPresent {
+			c.IsRecovered = true
+		} else if !c.IsRecovered && !contains && !c.AlertIfPresent {
+			c.IsRecovered = true
+		} else {
+			if c.AlertIfPresent && !contains {
+				c.IsRecovered = false
+			} else if !c.AlertIfPresent && contains {
+				c.IsRecovered = false
+			}
 		}
 
+		message := ""
+
+		if c.AlertIfPresent && contains {
+			if c.AlertOnlyRecovered {
+				if c.IsRecovered != oldRecovered {
+					message = fmt.Sprintf("/%d <b>%s</b> <i>found</i>", c.ID, c.Title)
+				}
+			} else {
+				message = fmt.Sprintf("/%d <b>%s</b> <i>found</i>", c.ID, c.Title)
+			}
+		} else if !c.AlertIfPresent && !contains {
+			if c.AlertOnlyRecovered {
+				if c.IsRecovered != oldRecovered {
+					message = fmt.Sprintf("/%d <b>%s</b> <i>NOT found</i>", c.ID, c.Title)
+				}
+			} else {
+				message = fmt.Sprintf("/%d <b>%s</b> <i>NOT found</i>", c.ID, c.Title)
+			}
+		}
+
+		if message != "" {
+			telegramChan <- telegramResponse{message, int64(c.UserID)}
+		}
 		c.LastHash = sum
-		// c.SeenChange = true
 		c.LastChanged = time.Now()
 	} else {
-		// c.SeenChange = false
-		// println("document not changed", c.ID, c.LastHash, c.SeenChange)
+		c.IsRecovered = false
 	}
 
 	c.LastChecked = time.Now()
