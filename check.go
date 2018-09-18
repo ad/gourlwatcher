@@ -20,18 +20,21 @@ import (
 
 // Helper struct for serialization.
 type Check struct {
-	ID             uint64    `json:"id"`
-	UserID         uint64    `json:"user_id"`
-	URL            string    `json:"url"`
-	Selector       string    `json:"selector"`
-	Schedule       string    `json:"schedule"`
-	LastChecked    time.Time `json:"last_checked"`
-	LastChanged    time.Time `json:"last_changed"`
-	LastHash       string    `json:"last_hash"`
-	AlertIfPresent bool      `json:"is_present"`
-	IsEnabled      bool      `json:"is_enabled"`
-	Content        string    `json:"content"`
-	Title          string    `json:"title"`
+	ID                 uint64    `json:"id"`
+	UserID             uint64    `json:"user_id"`
+	URL                string    `json:"url"`
+	Selector           string    `json:"selector"`
+	Schedule           string    `json:"schedule"`
+	LastChecked        time.Time `json:"last_checked"`
+	LastChanged        time.Time `json:"last_changed"`
+	LastHash           string    `json:"last_hash"`
+	Content            string    `json:"content"`
+	Title              string    `json:"title"`
+	IsRecovered        bool      `json:"is_recovered"`
+	AlertOnlyRecovered bool      `json:"alert_recovered"`
+	AlertIfPresent     bool      `json:"is_present"`
+	IsEnabled          bool      `json:"is_enabled"`
+
 	// SeenChange    bool      `json:"seen"`
 
 	// The last-checked date, as a string.
@@ -380,10 +383,10 @@ func (c *Check) Info(db *bolt.DB, requester int64, findID string) (result string
 
 	check.PrepareForDisplay()
 
-	return fmt.Sprintf("<b>%s</b>\n/%d from %d (%s)\nURL: %s\nSearch: %s\nlast checked: %s\nlast changed: %s\nMust contain string: %t", check.Title, check.ID, check.UserID, check.IsEnabledPretty, check.URL, check.Selector, check.LastCheckedPretty, check.LastChangedPretty, check.AlertIfPresent)
+	return fmt.Sprintf("<b>%s</b>\n/%d from %d (%s)\nURL: %s\nSearch: %s\nlast checked: %s\nlast changed: %s\nMust contain string: %t\nAlert only after recover: %t", check.Title, check.ID, check.UserID, check.IsEnabledPretty, check.URL, check.Selector, check.LastCheckedPretty, check.LastChangedPretty, check.AlertIfPresent, check.AlertOnlyRecovered)
 }
 
-func (c *Check) Modify(db *bolt.DB, requester int64, findID int64, title string, url string, search string, notifyPresent bool, isEnabled bool) (result string) {
+func (c *Check) Modify(db *bolt.DB, requester int64, findID int64, title string, url string, search string, notifyPresent bool, isEnabled bool, onlyRecovered bool) (result string) {
 	// id, err := strconv.ParseUint(findID, 10, 64)
 	// if err != nil {
 	// 	println(err.Error(), http.StatusBadRequest)
@@ -427,6 +430,10 @@ func (c *Check) Modify(db *bolt.DB, requester int64, findID int64, title string,
 	}
 	if c.AlertIfPresent != notifyPresent {
 		check.AlertIfPresent = notifyPresent
+		updated = true
+	}
+	if c.AlertOnlyRecovered != onlyRecovered {
+		check.AlertOnlyRecovered = onlyRecovered
 		updated = true
 	}
 	if c.IsEnabled != isEnabled {
