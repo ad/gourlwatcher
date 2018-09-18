@@ -234,7 +234,7 @@ func (c *Check) Update(db *bolt.DB) {
 		c.LastHash = sum
 		c.LastChanged = time.Now()
 	} else {
-		c.IsRecovered = false
+		// c.IsRecovered = false
 	}
 
 	c.LastChecked = time.Now()
