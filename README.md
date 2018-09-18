@@ -27,6 +27,16 @@ nohup gourlwatcher -token telegram:token -secret auth_secret &
 check string in result body
 
 
+/updateurl url_id
+
+new url
+
+
 /updatesearch url_id
 
 check string in result body
+
+
+/updatetitle url_id
+
+new title

@@ -146,49 +146,7 @@ func main() {
 				} else {
 					telegramChan <- telegramResponse{"Not authorized", chatID}
 				}
-			case "info":
-				// if user.Check(db, uint64(userID)) {
-				// println("trying to get info")
-				innerChan <- telegramResponse{text, chatID}
-				// } else {
-				// 	telegramChan <- telegramResponse{"Not authorized", chatID}
-				// }
-			case "diff":
-				// if user.Check(db, uint64(userID)) {
-				// println("trying to get diff")
-				innerChan <- telegramResponse{text, chatID}
-				// } else {
-				// 	telegramChan <- telegramResponse{"Not authorized", chatID}
-				// }
-			case "edit":
-				// if user.Check(db, uint64(userID)) {
-				// println("edit")
-				innerChan <- telegramResponse{text, chatID}
-				// } else {
-				// 	telegramChan <- telegramResponse{"Not authorized", chatID}
-				// }
-			case "delete":
-				// if user.Check(db, uint64(userID)) {
-				// println("delete")
-				innerChan <- telegramResponse{text, chatID}
-				// } else {
-				// 	telegramChan <- telegramResponse{"Not authorized", chatID}
-				// }
-			case "togglediff":
-				// if user.Check(db, uint64(userID)) {
-				// println("toggle diff")
-				innerChan <- telegramResponse{text, chatID}
-				// } else {
-				// 	telegramChan <- telegramResponse{"Not authorized", chatID}
-				// }
-			case "togglecontains":
-				// if user.Check(db, uint64(userID)) {
-				// println("toggle contains")
-				innerChan <- telegramResponse{text, chatID}
-				// } else {
-				// 	telegramChan <- telegramResponse{"Not authorized", chatID}
-				// }
-			case "toggleenabled":
+			case "info", "diff", "edit", "delete", "togglediff", "togglecontains", "toggleenabled", "updatesearch", "updateurl", "updatetitle":
 				// if user.Check(db, uint64(userID)) {
 				// println("toggle enabled")
 				innerChan <- telegramResponse{text, chatID}
@@ -332,7 +290,7 @@ func doCommand(db *bolt.DB, cron *cron.Cron, innerChan chan telegramResponse, st
 							check := Check{}
 
 							check = *check.Get(db, stringSlice[1])
-							telegramChan <- telegramResponse{check.Modify(db, msg.to, int64(check.ID), check.URL, check.Selector, check.NotifyPresent, check.IsEnabled, !check.SendDiff), msg.to}
+							telegramChan <- telegramResponse{check.Modify(db, msg.to, int64(check.ID), check.Title, check.URL, check.Selector, check.NotifyPresent, check.IsEnabled, !check.SendDiff), msg.to}
 						}
 					}
 				} else if strings.HasPrefix(msg.body, "/togglecontains") {
@@ -343,7 +301,7 @@ func doCommand(db *bolt.DB, cron *cron.Cron, innerChan chan telegramResponse, st
 							check := Check{}
 
 							check = *check.Get(db, stringSlice[1])
-							telegramChan <- telegramResponse{check.Modify(db, msg.to, int64(check.ID), check.URL, check.Selector, !check.NotifyPresent, check.IsEnabled, check.SendDiff), msg.to}
+							telegramChan <- telegramResponse{check.Modify(db, msg.to, int64(check.ID), check.Title, check.URL, check.Selector, !check.NotifyPresent, check.IsEnabled, check.SendDiff), msg.to}
 						}
 					}
 				} else if strings.HasPrefix(msg.body, "/toggleenabled") {
@@ -353,7 +311,7 @@ func doCommand(db *bolt.DB, cron *cron.Cron, innerChan chan telegramResponse, st
 							// fmt.Printf("%q looks like a number.\n", v)
 							check := Check{}
 							check = *check.Get(db, stringSlice[1])
-							telegramChan <- telegramResponse{check.Modify(db, msg.to, int64(check.ID), check.URL, check.Selector, check.NotifyPresent, !check.IsEnabled, check.SendDiff), msg.to}
+							telegramChan <- telegramResponse{check.Modify(db, msg.to, int64(check.ID), check.Title, check.URL, check.Selector, check.NotifyPresent, !check.IsEnabled, check.SendDiff), msg.to}
 						}
 					}
 				} else if strings.HasPrefix(msg.body, "/updatesearch") {
@@ -366,9 +324,37 @@ func doCommand(db *bolt.DB, cron *cron.Cron, innerChan chan telegramResponse, st
 						check := Check{}
 
 						check = *check.Get(db, id)
-						telegramChan <- telegramResponse{check.Modify(db, msg.to, int64(check.ID), check.URL, body, check.NotifyPresent, check.IsEnabled, check.SendDiff), msg.to}
+						telegramChan <- telegramResponse{check.Modify(db, msg.to, int64(check.ID), check.Title, check.URL, body, check.NotifyPresent, check.IsEnabled, check.SendDiff), msg.to}
 					} else {
 						telegramChan <- telegramResponse{"please send in format\n/updatesearch id\n\ntext", msg.to}
+					}
+				} else if strings.HasPrefix(msg.body, "/updatetitle") {
+					stringSlice := strings.Split(msg.body, "\n\n")
+					if len(stringSlice) >= 2 {
+						commandURL := strings.Split(stringSlice[0], " ")
+						id := commandURL[1]
+						body := strings.Join(stringSlice[1:], "\n\n")
+
+						check := Check{}
+
+						check = *check.Get(db, id)
+						telegramChan <- telegramResponse{check.Modify(db, msg.to, int64(check.ID), body, check.URL, check.Selector, check.NotifyPresent, check.IsEnabled, check.SendDiff), msg.to}
+					} else {
+						telegramChan <- telegramResponse{"please send in format\n/updatetitle id\n\ntitle", msg.to}
+					}
+				} else if strings.HasPrefix(msg.body, "/updateurl") {
+					stringSlice := strings.Split(msg.body, "\n\n")
+					if len(stringSlice) >= 2 {
+						commandURL := strings.Split(stringSlice[0], " ")
+						id := commandURL[1]
+						body := strings.Join(stringSlice[1:], "\n\n")
+
+						check := Check{}
+
+						check = *check.Get(db, id)
+						telegramChan <- telegramResponse{check.Modify(db, msg.to, int64(check.ID), check.Title, body, check.Selector, check.NotifyPresent, check.IsEnabled, check.SendDiff), msg.to}
+					} else {
+						telegramChan <- telegramResponse{"please send in format\n/updateurl id\n\nurl", msg.to}
 					}
 				} else if strings.HasPrefix(msg.body, "/info") {
 					stringSlice := strings.Split(msg.body, " ")

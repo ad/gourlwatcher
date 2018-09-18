@@ -34,6 +34,7 @@ type Check struct {
 	Content       string    `json:"content"`
 	Diff          string    `json:"diff"`
 	SendDiff      bool      `json:"send_diff"`
+	Title         string    `json:"title"`
 
 	// The last-checked date, as a string.
 	LastCheckedPretty string `json:"-"`
@@ -173,9 +174,9 @@ func (c *Check) Update(db *bolt.DB) {
 		contains := strings.Contains(string(test), c.Selector)
 
 		if c.NotifyPresent && !contains {
-			telegramChan <- telegramResponse{fmt.Sprintf("<b>ID %d ALERT string is not found</b>\n%s", c.ID, prettyDiff), int64(c.UserID)}
+			telegramChan <- telegramResponse{fmt.Sprintf("<b>%s</b>\n<i>ID %d ALERT string is not found</i>\n%s", c.Title, c.ID, prettyDiff), int64(c.UserID)}
 		} else if !c.NotifyPresent && contains {
-			telegramChan <- telegramResponse{fmt.Sprintf("<b>ID %d ALERT string is found</b>\n%s", c.ID, prettyDiff), int64(c.UserID)}
+			telegramChan <- telegramResponse{fmt.Sprintf("<b>%s</b>\n<i>ID %d ALERT string is found</i>\n%s", c.Title, c.ID, prettyDiff), int64(c.UserID)}
 		}
 
 		c.LastHash = sum
@@ -349,7 +350,7 @@ func (c *Check) Info(db *bolt.DB, requester int64, findID string) (result string
 
 	check.PrepareForDisplay()
 
-	return fmt.Sprintf("%d from %d (%t)\nURL: %s\nSearch: %s\nlast checked: %s\nlast changed: %s\nShow diff: %t\nMust contain string: %t", check.ID, check.UserID, check.IsEnabled, check.URL, check.Selector, check.LastCheckedPretty, check.LastChangedPretty, check.SendDiff, check.NotifyPresent)
+	return fmt.Sprintf("<b>%s</b>\n%d from %d (%t)\nURL: %s\nSearch: %s\nlast checked: %s\nlast changed: %s\nShow diff: %t\nMust contain string: %t", check.Title, check.ID, check.UserID, check.IsEnabled, check.URL, check.Selector, check.LastCheckedPretty, check.LastChangedPretty, check.SendDiff, check.NotifyPresent)
 }
 
 func (c *Check) ShowDiff(db *bolt.DB, requester int64, findID string) (result string) {
@@ -393,7 +394,7 @@ func (c *Check) ShowDiff(db *bolt.DB, requester int64, findID string) (result st
 	return fmt.Sprintf("%v", check.Diff)
 }
 
-func (c *Check) Modify(db *bolt.DB, requester int64, findID int64, url string, search string, notifyPresent bool, isEnabled bool, sendDiff bool) (result string) {
+func (c *Check) Modify(db *bolt.DB, requester int64, findID int64, title string, url string, search string, notifyPresent bool, isEnabled bool, sendDiff bool) (result string) {
 	// id, err := strconv.ParseUint(findID, 10, 64)
 	// if err != nil {
 	// 	println(err.Error(), http.StatusBadRequest)
@@ -445,6 +446,10 @@ func (c *Check) Modify(db *bolt.DB, requester int64, findID int64, url string, s
 	}
 	if c.SendDiff != sendDiff {
 		check.SendDiff = sendDiff
+		updated = true
+	}
+	if c.Title != title {
+		check.Title = title
 		updated = true
 	}
 
