@@ -115,6 +115,10 @@ func main() {
 	for {
 		select {
 		case update := <-updates:
+			if update.Message == nil {
+				continue
+			}
+
 			text := update.Message.Text
 			command := update.Message.Command()
 			args := update.Message.CommandArguments()
@@ -178,7 +182,7 @@ func main() {
 
 							result := ""
 							for _, v := range my_items {
-								result += fmt.Sprintf("\n\n/%d <b>%s (%s)</b> %s", v.ID, v.Title, v.IsEnabledPretty, v.ShortURL)
+								result += fmt.Sprintf("\n\n/%d <b>%s</b> (%s) %s", v.ID, v.Title, v.IsEnabledPretty, v.ShortURL)
 							}
 							if result == "" {
 								result = "Empty list"
@@ -383,24 +387,22 @@ func doCommand(db *bolt.DB, cron *cron.Cron, innerChan chan telegramResponse, st
 						}
 					}
 				} else if strings.HasPrefix(msg.body, "/add") {
-					stringSlice := strings.Split(msg.body, "\n\n")
-					if len(stringSlice) >= 2 {
-						commandURL := strings.Split(stringSlice[0], " ")
-						url := commandURL[1]
-						body := strings.Join(stringSlice[1:], "\n\n")
+					go func() {
+						stringSlice := strings.Split(msg.body, "\n\n")
+						if len(stringSlice) >= 2 {
+							commandURL := strings.Split(stringSlice[0], " ")
+							url := commandURL[1]
+							body := strings.Join(stringSlice[1:], "\n\n")
 
-						check := Check{
-							Schedule: "0 * * * * *",
-						}
+							check := Check{
+								Schedule: "0 * * * * *",
+							}
 
-						if check.New(db, cron, url, body, "true", msg.to) {
-							telegramChan <- telegramResponse{"Added", msg.to}
+							telegramChan <- telegramResponse{check.New(db, cron, url, body, "true", msg.to), msg.to}
 						} else {
-							telegramChan <- telegramResponse{"Not added", msg.to}
+							telegramChan <- telegramResponse{"please send in format\n/add url\n\ntext", msg.to}
 						}
-					} else {
-						telegramChan <- telegramResponse{"please send in format\n/add url\n\ntext", msg.to}
-					}
+					}()
 				}
 				stopChan <- msg.to
 			}()

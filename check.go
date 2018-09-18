@@ -180,6 +180,8 @@ func (c *Check) Update(db *bolt.DB) {
 
 	c.Content = text
 
+	// println(text)
+
 	// println(string(test))
 
 	// TODO: replace with str search
@@ -239,26 +241,22 @@ func (c *Check) Update(db *bolt.DB) {
 	})
 }
 
-func (c *Check) New(db *bolt.DB, cron *cron.Cron, url string, search string, contains string, userID int64) (result bool) {
+func (c *Check) New(db *bolt.DB, cron *cron.Cron, url string, search string, contains string, userID int64) (result string) {
 	println("adding new check", url, search)
 
 	if len(url) == 0 {
-		println("missing URL parameter", http.StatusBadRequest)
-		return false
+		return "missing URL parameter"
 	}
 	if len(search) == 0 {
-		println("missing search parameter", http.StatusBadRequest)
-		return false
+		return "missing search parameter"
 	}
 
 	if len(contains) == 0 {
-		println("missing contains parameter", http.StatusBadRequest)
-		return false
+		return "missing contains parameter"
 	}
 
 	if userID <= 0 {
-		println("missing userid parameter", http.StatusBadRequest)
-		return false
+		return "missing userid parameter"
 	}
 
 	check := Check{
@@ -292,9 +290,7 @@ func (c *Check) New(db *bolt.DB, cron *cron.Cron, url string, search string, con
 	})
 
 	if err != nil {
-		println("error inserting new item", err, check.URL)
-		// http.Error(w, err.Error(), http.StatusInternalServerError)
-		return false
+		return "error inserting new item"
 	}
 
 	// If we succeeded, we update right now...
@@ -305,7 +301,7 @@ func (c *Check) New(db *bolt.DB, cron *cron.Cron, url string, search string, con
 	cr.AddFunc(check.Schedule, func() {
 		TryUpdate(db, check.ID)
 	})
-	return true
+	return fmt.Sprintf("/%d added", check.ID)
 }
 
 func (c *Check) Delete(db *bolt.DB, requester int64, findID string) (result bool) {
