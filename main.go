@@ -174,7 +174,7 @@ func main() {
 
 						result := ""
 						for _, v := range my_items {
-							result += fmt.Sprintf("\n\n<b>%s ID%d (%t)</b> %s", v.ID, v.Title, v.ID, v.IsEnabled, v.URL)
+							result += fmt.Sprintf("\n\n<b>%s ID%d (%t)</b> %s", v.Title, v.ID, v.IsEnabled, v.URL)
 						}
 						if result == "" {
 							result = "Emty list"
