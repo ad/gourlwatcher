@@ -20,19 +20,19 @@ import (
 
 // Helper struct for serialization.
 type Check struct {
-	ID            uint64    `json:"id"`
-	UserID        uint64    `json:"user_id"`
-	URL           string    `json:"url"`
-	Selector      string    `json:"selector"`
-	Schedule      string    `json:"schedule"`
-	LastChecked   time.Time `json:"last_checked"`
-	LastChanged   time.Time `json:"last_changed"`
-	LastHash      string    `json:"last_hash"`
-	SeenChange    bool      `json:"seen"`
-	NotifyPresent bool      `json:"is_present"`
-	IsEnabled     bool      `json:"is_enabled"`
-	Content       string    `json:"content"`
-	Title         string    `json:"title"`
+	ID             uint64    `json:"id"`
+	UserID         uint64    `json:"user_id"`
+	URL            string    `json:"url"`
+	Selector       string    `json:"selector"`
+	Schedule       string    `json:"schedule"`
+	LastChecked    time.Time `json:"last_checked"`
+	LastChanged    time.Time `json:"last_changed"`
+	LastHash       string    `json:"last_hash"`
+	AlertIfPresent bool      `json:"is_present"`
+	IsEnabled      bool      `json:"is_enabled"`
+	Content        string    `json:"content"`
+	Title          string    `json:"title"`
+	// SeenChange    bool      `json:"seen"`
 
 	// The last-checked date, as a string.
 	LastCheckedPretty string `json:"-"`
@@ -179,7 +179,7 @@ func (c *Check) Update(db *bolt.DB) {
 	text := string(test) //Short(string(test), 81920)
 	c.Content = text
 
-	println("old size", len(string(test)), "new size", len(text))
+	// println("old size", len(string(test)), "new size", len(text))
 
 	// println(text)
 
@@ -202,24 +202,24 @@ func (c *Check) Update(db *bolt.DB) {
 
 	// Hash the content
 	hash := sha256.New()
-	io.WriteString(hash, string(text))
+	io.WriteString(hash, text)
 	sum := hex.EncodeToString(hash.Sum(nil))
 
 	// Check for update
 	if c.LastHash != sum {
-		contains := strings.Contains(string(text), c.Selector)
+		contains := strings.Contains(text, c.Selector)
 
-		if c.NotifyPresent && !contains {
+		if c.AlertIfPresent && !contains {
 			telegramChan <- telegramResponse{fmt.Sprintf("/%d <b>%s</b> <i>NOT found</i>", c.ID, c.Title), int64(c.UserID)}
-		} else if !c.NotifyPresent && contains {
+		} else if !c.AlertIfPresent && contains {
 			telegramChan <- telegramResponse{fmt.Sprintf("/%d <b>%s</b> <i>found</i>", c.ID, c.Title), int64(c.UserID)}
 		}
 
 		c.LastHash = sum
-		c.SeenChange = true
+		// c.SeenChange = true
 		c.LastChanged = time.Now()
 	} else {
-		c.SeenChange = false
+		// c.SeenChange = false
 		// println("document not changed", c.ID, c.LastHash, c.SeenChange)
 	}
 
@@ -268,7 +268,7 @@ func (c *Check) New(db *bolt.DB, cron *cron.Cron, url string, search string, con
 		IsEnabled: true,
 	}
 
-	check.NotifyPresent = contains == "true"
+	check.AlertIfPresent = contains == "true"
 
 	err := db.Update(func(tx *bolt.Tx) error {
 		data, err := json.Marshal(check)
@@ -380,7 +380,7 @@ func (c *Check) Info(db *bolt.DB, requester int64, findID string) (result string
 
 	check.PrepareForDisplay()
 
-	return fmt.Sprintf("<b>%s</b>\n/%d from %d (%s)\nURL: %s\nSearch: %s\nlast checked: %s\nlast changed: %s\nMust contain string: %t", check.Title, check.ID, check.UserID, check.IsEnabledPretty, check.URL, check.Selector, check.LastCheckedPretty, check.LastChangedPretty, check.NotifyPresent)
+	return fmt.Sprintf("<b>%s</b>\n/%d from %d (%s)\nURL: %s\nSearch: %s\nlast checked: %s\nlast changed: %s\nMust contain string: %t", check.Title, check.ID, check.UserID, check.IsEnabledPretty, check.URL, check.Selector, check.LastCheckedPretty, check.LastChangedPretty, check.AlertIfPresent)
 }
 
 func (c *Check) Modify(db *bolt.DB, requester int64, findID int64, title string, url string, search string, notifyPresent bool, isEnabled bool) (result string) {
@@ -425,8 +425,8 @@ func (c *Check) Modify(db *bolt.DB, requester int64, findID int64, title string,
 		check.Selector = search
 		updated = true
 	}
-	if c.NotifyPresent != notifyPresent {
-		check.NotifyPresent = notifyPresent
+	if c.AlertIfPresent != notifyPresent {
+		check.AlertIfPresent = notifyPresent
 		updated = true
 	}
 	if c.IsEnabled != isEnabled {
