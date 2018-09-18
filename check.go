@@ -154,6 +154,10 @@ func GetMyChecks(db *bolt.DB, requester int64, output *[]*Check) error {
 func (c *Check) Update(db *bolt.DB) {
 	// println("Requesting page id", c.ID, "last checked", c.LastCheckedPretty, "last changed", c.LastChangedPretty, "must", (c.NotifyPresent), "contain", c.Selector, c.ShortHash)
 
+	if !c.IsEnabled {
+		return
+	}
+
 	timeout := time.Duration(10 * time.Second)
 	client := http.Client{
 		Timeout: timeout,
