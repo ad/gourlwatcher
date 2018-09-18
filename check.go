@@ -176,9 +176,10 @@ func (c *Check) Update(db *bolt.DB) {
 		// os.Exit(1)
 	}
 
-	text := Short(string(test), 81920)
-
+	text := string(test) //Short(string(test), 81920)
 	c.Content = text
+
+	println("old size", len(string(test)), "new size", len(text))
 
 	// println(text)
 
