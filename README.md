@@ -10,6 +10,8 @@ nohup gourlwatcher -token telegram:token -secret auth_secret &
 ## Commands
 /auth secret
 
+/list
+
 /info url_id
 
 /delete url_id

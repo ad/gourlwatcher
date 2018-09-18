@@ -162,6 +162,28 @@ func main() {
 				} else {
 					telegramChan <- telegramResponse{"Not authorized", chatID}
 				}
+			case "list":
+				if user.Check(db, uint64(userID)) {
+					go func() {
+						var my_items []*Check
+						if err = GetMyChecks(db, userID, &my_items); err != nil {
+							println("error loading checks", err)
+						} else {
+							// println("loaded", len(my_items), "check(s)")
+						}
+
+						result := ""
+						for _, v := range my_items {
+							result += fmt.Sprintf("\n\n<b>%s ID%d (%t)</b> %s", v.ID, v.Title, v.ID, v.IsEnabled, v.URL)
+						}
+						if result == "" {
+							result = "Emty list"
+						}
+						telegramChan <- telegramResponse{result, chatID}
+					}()
+				} else {
+					telegramChan <- telegramResponse{"Not authorized", chatID}
+				}
 			default:
 				log.Printf("[%d] %s, %s, %s", chatID, text, command, args)
 				msg.Text = text

@@ -109,6 +109,28 @@ func GetAllChecks(db *bolt.DB, output *[]*Check) error {
 	})
 }
 
+func GetMyChecks(db *bolt.DB, requester int64, output *[]*Check) error {
+	return db.View(func(tx *bolt.Tx) error {
+		b := tx.Bucket(UrlsBucket)
+		b.ForEach(func(k, v []byte) error {
+			check := &Check{}
+			if err := json.Unmarshal(v, check); err != nil {
+				println("error unmarshaling json", err)
+				return nil
+			}
+
+			if check.UserID == uint64(requester) {
+				check.ID = binary.LittleEndian.Uint64(k)
+				check.PrepareForDisplay()
+
+				*output = append(*output, check)
+			}
+			return nil
+		})
+		return nil
+	})
+}
+
 func (c *Check) Update(db *bolt.DB) {
 	// println("Requesting page id", c.ID, "last checked", c.LastCheckedPretty, "last changed", c.LastChangedPretty, "must", (c.NotifyPresent), "contain", c.Selector, c.ShortHash)
 
