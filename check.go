@@ -275,11 +275,14 @@ func (c *Check) New(db *bolt.DB, cron *cron.Cron, url string, search string, con
 	}
 
 	check := Check{
-		URL:       url,
-		Selector:  search,
-		Schedule:  "0 * * * * *",
-		UserID:    uint64(userID),
-		IsEnabled: true,
+		URL:                url,
+		Selector:           search,
+		Schedule:           "0 * * * * *",
+		UserID:             uint64(userID),
+		IsEnabled:          true,
+		IsRecovered:        false,
+		AlertIfPresent:     true,
+		AlertOnlyRecovered: true,
 	}
 
 	check.AlertIfPresent = contains == "true"
