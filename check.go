@@ -229,7 +229,7 @@ func (c *Check) Update(db *bolt.DB) {
 		}
 
 		if message != "" {
-			telegramChan <- telegramResponse{message, int64(c.UserID)}
+			telegramChan <- telegramResponse{message, int64(c.UserID), int64(c.ID)}
 		}
 		c.LastHash = sum
 		c.LastChanged = time.Now()

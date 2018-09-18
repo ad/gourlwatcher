@@ -16,8 +16,9 @@ import (
 )
 
 type telegramResponse struct {
-	body string
-	to   int64
+	body     string `json:"body"`
+	to       int64  `json:"to"`
+	check_id int64  `json:"check_id"`
 }
 
 var (
@@ -115,15 +116,42 @@ func main() {
 	for {
 		select {
 		case update := <-updates:
-			if update.Message == nil {
+			if update.EditedMessage != nil {
 				continue
 			}
 
-			text := update.Message.Text
-			command := update.Message.Command()
-			args := update.Message.CommandArguments()
-			userID := int64(update.Message.From.ID)
-			chatID := int64(update.Message.Chat.ID)
+			text := ""
+			command := ""
+			args := ""
+			userID := int64(0)
+			chatID := int64(0)
+
+			if update.CallbackQuery != nil {
+				println(update.CallbackQuery.Data)
+				edit := tgbotapi.NewEditMessageReplyMarkup(
+					update.CallbackQuery.Message.Chat.ID,
+					update.CallbackQuery.Message.MessageID,
+					tgbotapi.InlineKeyboardMarkup{
+						InlineKeyboard: make([][]tgbotapi.InlineKeyboardButton, 0),
+					},
+				)
+				bot.Send(edit)
+
+				text = update.CallbackQuery.Data
+				if strings.HasPrefix(text, "/") {
+					stringSlice := strings.Split(text[1:], " ")
+					command = stringSlice[0]
+					args = stringSlice[1]
+				}
+				userID = int64(update.CallbackQuery.From.ID)
+				chatID = int64(update.CallbackQuery.From.ID)
+			} else {
+				text = update.Message.Text
+				command = update.Message.Command()
+				args = update.Message.CommandArguments()
+				userID = int64(update.Message.From.ID)
+				chatID = int64(update.Message.Chat.ID)
+			}
 
 			msg := tgbotapi.NewMessage(userID, "")
 			user := User{
@@ -131,9 +159,9 @@ func main() {
 				IsEnabled: true,
 			}
 
-			_, err := strconv.ParseInt(command, 10, 64)
+			id, err := strconv.ParseInt(command, 10, 64)
 			if err == nil {
-				innerChan <- telegramResponse{"/info " + command, chatID}
+				innerChan <- telegramResponse{"/info " + command, chatID, id}
 			} else {
 				switch command {
 
@@ -141,23 +169,23 @@ func main() {
 					if args == *authSecret {
 						go func() {
 							if user.New(db, uint64(userID)) {
-								telegramChan <- telegramResponse{"Authorized", chatID}
+								telegramChan <- telegramResponse{"Authorized", chatID, -1}
 							} else {
-								telegramChan <- telegramResponse{"Not authorized", chatID}
+								telegramChan <- telegramResponse{"Not authorized", chatID, -1}
 							}
 						}()
 					}
 				case "add":
 					if user.Check(db, uint64(userID)) {
 						// println("trying to add new check")
-						innerChan <- telegramResponse{text, chatID}
+						innerChan <- telegramResponse{text, chatID, -1}
 					} else {
-						telegramChan <- telegramResponse{"Not authorized", chatID}
+						telegramChan <- telegramResponse{"Not authorized", chatID, -1}
 					}
 				case "info", "edit", "delete", "togglecontains", "toggleenabled", "updatesearch", "updateurl", "updatetitle", "togglerecovered":
 					// if user.Check(db, uint64(userID)) {
 					// println("toggle enabled")
-					innerChan <- telegramResponse{text, chatID}
+					innerChan <- telegramResponse{text, chatID, -1}
 					// } else {
 					// 	telegramChan <- telegramResponse{"Not authorized", chatID}
 					// }
@@ -166,9 +194,9 @@ func main() {
 					// https://github.com/chromedp/examples/blob/master/screenshot/main.go
 					if user.Check(db, uint64(userID)) {
 						// println("shot")
-						innerChan <- telegramResponse{text, chatID}
+						innerChan <- telegramResponse{text, chatID, -1}
 					} else {
-						telegramChan <- telegramResponse{"Not authorized", chatID}
+						telegramChan <- telegramResponse{"Not authorized", chatID, -1}
 					}
 				case "list":
 					if user.Check(db, uint64(userID)) {
@@ -187,10 +215,10 @@ func main() {
 							if result == "" {
 								result = "Empty list"
 							}
-							telegramChan <- telegramResponse{result, chatID}
+							telegramChan <- telegramResponse{result, chatID, -1}
 						}()
 					} else {
-						telegramChan <- telegramResponse{"Not authorized", chatID}
+						telegramChan <- telegramResponse{"Not authorized", chatID, -1}
 					}
 				default:
 					log.Printf("[%d] %s, %s, %s", chatID, text, command, args)
@@ -214,19 +242,15 @@ func main() {
 
 			messages := SplitSubN(resp.body, 4000)
 			for _, message := range messages {
-				// if !strings.HasPrefix(message, "<pre>") {
-				// 	message = "<pre>" + message
-				// }
-				// if !strings.HasSuffix(message, "\n</pre>") {
-				// 	message = strings.Trim(message, "\n\t ") + "</pre>"
-				// }
-
 				log.Println(resp.to, message)
 
 				msg := tgbotapi.NewMessage(resp.to, message)
 				msg.DisableWebPagePreview = true
 				msg.ParseMode = "HTML"
 				msg.DisableNotification = true
+				if resp.check_id > 0 {
+					msg.ReplyMarkup = initKeyboard(db, resp.check_id)
+				}
 				_, err := bot.Send(msg)
 				if err != nil {
 					println(err.Error())
@@ -307,9 +331,9 @@ func doCommand(db *bolt.DB, cron *cron.Cron, innerChan chan telegramResponse, st
 							check := Check{}
 
 							if check.Delete(db, msg.to, stringSlice[1]) {
-								telegramChan <- telegramResponse{"Deleted", msg.to}
+								telegramChan <- telegramResponse{"Deleted", msg.to, -1}
 							} else {
-								telegramChan <- telegramResponse{"Not deleted", msg.to}
+								telegramChan <- telegramResponse{"Not deleted", msg.to, msg.check_id}
 							}
 						}
 					}
@@ -321,7 +345,7 @@ func doCommand(db *bolt.DB, cron *cron.Cron, innerChan chan telegramResponse, st
 							check := Check{}
 
 							check = *check.Get(db, stringSlice[1])
-							telegramChan <- telegramResponse{check.Modify(db, msg.to, int64(check.ID), check.Title, check.URL, check.Selector, !check.AlertIfPresent, check.IsEnabled, check.AlertOnlyRecovered), msg.to}
+							telegramChan <- telegramResponse{check.Modify(db, msg.to, int64(check.ID), check.Title, check.URL, check.Selector, !check.AlertIfPresent, check.IsEnabled, check.AlertOnlyRecovered), msg.to, msg.check_id}
 						}
 					}
 				} else if strings.HasPrefix(msg.body, "/toggleenabled") {
@@ -331,7 +355,7 @@ func doCommand(db *bolt.DB, cron *cron.Cron, innerChan chan telegramResponse, st
 							// fmt.Printf("%q looks like a number.\n", v)
 							check := Check{}
 							check = *check.Get(db, stringSlice[1])
-							telegramChan <- telegramResponse{check.Modify(db, msg.to, int64(check.ID), check.Title, check.URL, check.Selector, check.AlertIfPresent, !check.IsEnabled, check.AlertOnlyRecovered), msg.to}
+							telegramChan <- telegramResponse{check.Modify(db, msg.to, int64(check.ID), check.Title, check.URL, check.Selector, check.AlertIfPresent, !check.IsEnabled, check.AlertOnlyRecovered), msg.to, msg.check_id}
 						}
 					}
 				} else if strings.HasPrefix(msg.body, "/togglerecovered") {
@@ -341,7 +365,7 @@ func doCommand(db *bolt.DB, cron *cron.Cron, innerChan chan telegramResponse, st
 							// fmt.Printf("%q looks like a number.\n", v)
 							check := Check{}
 							check = *check.Get(db, stringSlice[1])
-							telegramChan <- telegramResponse{check.Modify(db, msg.to, int64(check.ID), check.Title, check.URL, check.Selector, check.AlertIfPresent, check.IsEnabled, !check.AlertOnlyRecovered), msg.to}
+							telegramChan <- telegramResponse{check.Modify(db, msg.to, int64(check.ID), check.Title, check.URL, check.Selector, check.AlertIfPresent, check.IsEnabled, !check.AlertOnlyRecovered), msg.to, msg.check_id}
 						}
 					}
 				} else if strings.HasPrefix(msg.body, "/updatesearch") {
@@ -354,9 +378,9 @@ func doCommand(db *bolt.DB, cron *cron.Cron, innerChan chan telegramResponse, st
 						check := Check{}
 
 						check = *check.Get(db, id)
-						telegramChan <- telegramResponse{check.Modify(db, msg.to, int64(check.ID), check.Title, check.URL, body, check.AlertIfPresent, check.IsEnabled, check.AlertOnlyRecovered), msg.to}
+						telegramChan <- telegramResponse{check.Modify(db, msg.to, int64(check.ID), check.Title, check.URL, body, check.AlertIfPresent, check.IsEnabled, check.AlertOnlyRecovered), msg.to, msg.check_id}
 					} else {
-						telegramChan <- telegramResponse{"please send in format\n/updatesearch id\n\ntext", msg.to}
+						telegramChan <- telegramResponse{"please send in format\n/updatesearch id\n\ntext", msg.to, msg.check_id}
 					}
 				} else if strings.HasPrefix(msg.body, "/updatetitle") {
 					stringSlice := strings.Split(msg.body, "\n\n")
@@ -368,9 +392,9 @@ func doCommand(db *bolt.DB, cron *cron.Cron, innerChan chan telegramResponse, st
 						check := Check{}
 
 						check = *check.Get(db, id)
-						telegramChan <- telegramResponse{check.Modify(db, msg.to, int64(check.ID), body, check.URL, check.Selector, check.AlertIfPresent, check.IsEnabled, check.AlertOnlyRecovered), msg.to}
+						telegramChan <- telegramResponse{check.Modify(db, msg.to, int64(check.ID), body, check.URL, check.Selector, check.AlertIfPresent, check.IsEnabled, check.AlertOnlyRecovered), msg.to, msg.check_id}
 					} else {
-						telegramChan <- telegramResponse{"please send in format\n/updatetitle id\n\ntitle", msg.to}
+						telegramChan <- telegramResponse{"please send in format\n/updatetitle id\n\ntitle", msg.to, msg.check_id}
 					}
 				} else if strings.HasPrefix(msg.body, "/updateurl") {
 					stringSlice := strings.Split(msg.body, "\n\n")
@@ -382,9 +406,9 @@ func doCommand(db *bolt.DB, cron *cron.Cron, innerChan chan telegramResponse, st
 						check := Check{}
 
 						check = *check.Get(db, id)
-						telegramChan <- telegramResponse{check.Modify(db, msg.to, int64(check.ID), check.Title, body, check.Selector, check.AlertIfPresent, check.IsEnabled, check.AlertOnlyRecovered), msg.to}
+						telegramChan <- telegramResponse{check.Modify(db, msg.to, int64(check.ID), check.Title, body, check.Selector, check.AlertIfPresent, check.IsEnabled, check.AlertOnlyRecovered), msg.to, msg.check_id}
 					} else {
-						telegramChan <- telegramResponse{"please send in format\n/updateurl id\n\nurl", msg.to}
+						telegramChan <- telegramResponse{"please send in format\n/updateurl id\n\nurl", msg.to, msg.check_id}
 					}
 				} else if strings.HasPrefix(msg.body, "/info") {
 					stringSlice := strings.Split(msg.body, " ")
@@ -393,7 +417,7 @@ func doCommand(db *bolt.DB, cron *cron.Cron, innerChan chan telegramResponse, st
 							// fmt.Printf("%q looks like a number.\n", v)
 							check := Check{}
 
-							telegramChan <- telegramResponse{check.Info(db, msg.to, stringSlice[1]), msg.to}
+							telegramChan <- telegramResponse{check.Info(db, msg.to, stringSlice[1]), msg.to, msg.check_id}
 						}
 					}
 				} else if strings.HasPrefix(msg.body, "/add") {
@@ -408,9 +432,9 @@ func doCommand(db *bolt.DB, cron *cron.Cron, innerChan chan telegramResponse, st
 								Schedule: "0 * * * * *",
 							}
 
-							telegramChan <- telegramResponse{check.New(db, cron, url, body, "true", msg.to), msg.to}
+							telegramChan <- telegramResponse{check.New(db, cron, url, body, "true", msg.to), msg.to, msg.check_id}
 						} else {
-							telegramChan <- telegramResponse{"please send in format\n/add url\n\ntext", msg.to}
+							telegramChan <- telegramResponse{"please send in format\n/add url\n\ntext", msg.to, msg.check_id}
 						}
 					}()
 				}
@@ -448,4 +472,78 @@ func Short(s string, i int) string {
 		return string(runes[:i])
 	}
 	return s
+}
+
+func initKeyboard(db *bolt.DB, check_id int64) (commandKeyboard tgbotapi.InlineKeyboardMarkup) {
+	info := fmt.Sprintf("/%s %d", "info", check_id)
+	delete := fmt.Sprintf("/%s %d", "delete", check_id)
+
+	togglecontains := fmt.Sprintf("/%s %d", "togglecontains", check_id)
+	toggleenabled := fmt.Sprintf("/%s %d", "toggleenabled", check_id)
+	togglerecovered := fmt.Sprintf("/%s %d", "togglerecovered", check_id)
+
+	check := &Check{}
+	check = check.Get(db, strconv.FormatInt(check_id, 10))
+
+	containsState := "Alert if found"
+	if check.AlertIfPresent {
+		containsState = "Alert if not found"
+	}
+
+	enabledState := "Enable"
+	if check.IsEnabled {
+		enabledState = "Disable"
+	}
+
+	recoveredState := "Only recovered"
+	if check.AlertOnlyRecovered {
+		recoveredState = "Always alert"
+	}
+
+	commandKeyboard = tgbotapi.NewInlineKeyboardMarkup(
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.InlineKeyboardButton{
+				Text:         "Info",
+				CallbackData: &info,
+			},
+			tgbotapi.InlineKeyboardButton{
+				Text:         "Delete",
+				CallbackData: &delete,
+			},
+		),
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.InlineKeyboardButton{
+				Text:         containsState,
+				CallbackData: &togglecontains,
+			},
+			tgbotapi.InlineKeyboardButton{
+				Text:         enabledState,
+				CallbackData: &toggleenabled,
+			},
+			tgbotapi.InlineKeyboardButton{
+				Text:         recoveredState,
+				CallbackData: &togglerecovered,
+			},
+		),
+	)
+	// commandKeyboard = tgbotapi.NewReplyKeyboard(
+	// 	tgbotapi.NewKeyboardButtonRow(
+	// 		tgbotapi.NewKeyboardButton("/stats"),
+	// 		tgbotapi.NewKeyboardButton("/progress"),
+	// 	),
+	// 	tgbotapi.NewKeyboardButtonRow(
+	// 		tgbotapi.NewKeyboardButton("/follow"),
+	// 		tgbotapi.NewKeyboardButton("/unfollow"),
+	// 	),
+	// 	tgbotapi.NewKeyboardButtonRow(
+	// 		tgbotapi.NewKeyboardButton("/cancelfollow"),
+	// 		tgbotapi.NewKeyboardButton("/cancelunfollow"),
+	// 		tgbotapi.NewKeyboardButton("/cancelrefollow"),
+	// 	),
+	// 	tgbotapi.NewKeyboardButtonRow(
+	// 		tgbotapi.NewKeyboardButton("/getcomments"),
+	// 		tgbotapi.NewKeyboardButton("/gettags"),
+	// 	),
+	// )
+	return
 }
