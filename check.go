@@ -134,7 +134,12 @@ func GetMyChecks(db *bolt.DB, requester int64, output *[]*Check) error {
 func (c *Check) Update(db *bolt.DB) {
 	// println("Requesting page id", c.ID, "last checked", c.LastCheckedPretty, "last changed", c.LastChangedPretty, "must", (c.NotifyPresent), "contain", c.Selector, c.ShortHash)
 
-	resp, err := http.Get(c.URL)
+	timeout := time.Duration(10 * time.Second)
+	client := http.Client{
+		Timeout: timeout,
+	}
+
+	resp, err := client.Get(c.URL)
 	if err != nil {
 		println("error fetching check", c.ID, c.URL, err)
 		return
