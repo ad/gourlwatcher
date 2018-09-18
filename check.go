@@ -159,7 +159,9 @@ func (c *Check) Update(db *bolt.DB) {
 		// os.Exit(1)
 	}
 
-	c.Content = string(test)
+	text := Short(string(test), 40960)
+
+	c.Content = text
 
 	// println(string(test))
 
@@ -180,12 +182,12 @@ func (c *Check) Update(db *bolt.DB) {
 
 	// Hash the content
 	hash := sha256.New()
-	io.WriteString(hash, string(test))
+	io.WriteString(hash, string(text))
 	sum := hex.EncodeToString(hash.Sum(nil))
 
 	// Check for update
 	if c.LastHash != sum {
-		contains := strings.Contains(string(test), c.Selector)
+		contains := strings.Contains(string(text), c.Selector)
 
 		if c.NotifyPresent && !contains {
 			telegramChan <- telegramResponse{fmt.Sprintf("<b>%s</b>\n<i>ID %d ALERT string is not found</i>", c.Title, c.ID), int64(c.UserID)}
