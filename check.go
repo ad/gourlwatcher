@@ -9,6 +9,7 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 	"time"
@@ -36,9 +37,12 @@ type Check struct {
 	// The last-checked date, as a string.
 	LastCheckedPretty string `json:"-"`
 	LastChangedPretty string `json:"-"`
+	IsEnabledPretty   string `json:"-"`
 
 	// The first 8 characters of the hash
 	ShortHash string `json:"-"`
+
+	ShortURL string `json:"-"`
 }
 
 // Helper struct for serialization.
@@ -86,6 +90,19 @@ func (c *Check) PrepareForDisplay() {
 		c.ShortHash = c.LastHash[0:8]
 	} else {
 		c.ShortHash = "none"
+	}
+
+	if c.IsEnabled {
+		c.IsEnabledPretty = "enabled"
+	} else {
+		c.IsEnabledPretty = "disabled"
+	}
+
+	if len(c.URL) > 0 {
+		u, err := url.Parse(c.URL)
+		if err == nil {
+			c.ShortURL = fmt.Sprintf("%s://%s%s", u.Scheme, u.Host, u.Path)
+		}
 	}
 }
 
@@ -190,9 +207,9 @@ func (c *Check) Update(db *bolt.DB) {
 		contains := strings.Contains(string(text), c.Selector)
 
 		if c.NotifyPresent && !contains {
-			telegramChan <- telegramResponse{fmt.Sprintf("<b>%s</b>\n<i>ID %d ALERT string is not found</i>", c.Title, c.ID), int64(c.UserID)}
+			telegramChan <- telegramResponse{fmt.Sprintf("/%d <b>%s</b> <i>NOT found</i>", c.ID, c.Title), int64(c.UserID)}
 		} else if !c.NotifyPresent && contains {
-			telegramChan <- telegramResponse{fmt.Sprintf("<b>%s</b>\n<i>ID %d ALERT string is found</i>", c.Title, c.ID), int64(c.UserID)}
+			telegramChan <- telegramResponse{fmt.Sprintf("/%d <b>%s</b> <i>found</i>", c.ID, c.Title), int64(c.UserID)}
 		}
 
 		c.LastHash = sum
@@ -366,7 +383,7 @@ func (c *Check) Info(db *bolt.DB, requester int64, findID string) (result string
 
 	check.PrepareForDisplay()
 
-	return fmt.Sprintf("<b>%s</b>\n%d from %d (%t)\nURL: %s\nSearch: %s\nlast checked: %s\nlast changed: %s\nMust contain string: %t", check.Title, check.ID, check.UserID, check.IsEnabled, check.URL, check.Selector, check.LastCheckedPretty, check.LastChangedPretty, check.NotifyPresent)
+	return fmt.Sprintf("<b>%s</b>\n/%d from %d (%s)\nURL: %s\nSearch: %s\nlast checked: %s\nlast changed: %s\nMust contain string: %t", check.Title, check.ID, check.UserID, check.IsEnabledPretty, check.URL, check.Selector, check.LastCheckedPretty, check.LastChangedPretty, check.NotifyPresent)
 }
 
 func (c *Check) Modify(db *bolt.DB, requester int64, findID int64, title string, url string, search string, notifyPresent bool, isEnabled bool) (result string) {

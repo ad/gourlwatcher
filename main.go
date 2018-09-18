@@ -127,68 +127,73 @@ func main() {
 				IsEnabled: true,
 			}
 
-			switch command {
+			_, err := strconv.ParseInt(command, 10, 64)
+			if err == nil {
+				innerChan <- telegramResponse{"/info " + command, chatID}
+			} else {
+				switch command {
 
-			case "auth":
-				if args == *authSecret {
-					go func() {
-						if user.New(db, uint64(userID)) {
-							telegramChan <- telegramResponse{"Authorized", chatID}
-						} else {
-							telegramChan <- telegramResponse{"Not authorized", chatID}
-						}
-					}()
-				}
-			case "add":
-				if user.Check(db, uint64(userID)) {
-					// println("trying to add new check")
+				case "auth":
+					if args == *authSecret {
+						go func() {
+							if user.New(db, uint64(userID)) {
+								telegramChan <- telegramResponse{"Authorized", chatID}
+							} else {
+								telegramChan <- telegramResponse{"Not authorized", chatID}
+							}
+						}()
+					}
+				case "add":
+					if user.Check(db, uint64(userID)) {
+						// println("trying to add new check")
+						innerChan <- telegramResponse{text, chatID}
+					} else {
+						telegramChan <- telegramResponse{"Not authorized", chatID}
+					}
+				case "info", "edit", "delete", "togglecontains", "toggleenabled", "updatesearch", "updateurl", "updatetitle":
+					// if user.Check(db, uint64(userID)) {
+					// println("toggle enabled")
 					innerChan <- telegramResponse{text, chatID}
-				} else {
-					telegramChan <- telegramResponse{"Not authorized", chatID}
-				}
-			case "info", "edit", "delete", "togglecontains", "toggleenabled", "updatesearch", "updateurl", "updatetitle":
-				// if user.Check(db, uint64(userID)) {
-				// println("toggle enabled")
-				innerChan <- telegramResponse{text, chatID}
-				// } else {
-				// 	telegramChan <- telegramResponse{"Not authorized", chatID}
-				// }
-			case "shot":
-				// https://github.com/suntong/web2image/blob/master/cdp-screenshot.go
-				// https://github.com/chromedp/examples/blob/master/screenshot/main.go
-				if user.Check(db, uint64(userID)) {
-					// println("shot")
-					innerChan <- telegramResponse{text, chatID}
-				} else {
-					telegramChan <- telegramResponse{"Not authorized", chatID}
-				}
-			case "list":
-				if user.Check(db, uint64(userID)) {
-					go func() {
-						var my_items []*Check
-						if err = GetMyChecks(db, userID, &my_items); err != nil {
-							println("error loading checks", err)
-						} else {
-							// println("loaded", len(my_items), "check(s)")
-						}
+					// } else {
+					// 	telegramChan <- telegramResponse{"Not authorized", chatID}
+					// }
+				case "shot":
+					// https://github.com/suntong/web2image/blob/master/cdp-screenshot.go
+					// https://github.com/chromedp/examples/blob/master/screenshot/main.go
+					if user.Check(db, uint64(userID)) {
+						// println("shot")
+						innerChan <- telegramResponse{text, chatID}
+					} else {
+						telegramChan <- telegramResponse{"Not authorized", chatID}
+					}
+				case "list":
+					if user.Check(db, uint64(userID)) {
+						go func() {
+							var my_items []*Check
+							if err = GetMyChecks(db, userID, &my_items); err != nil {
+								println("error loading checks", err)
+							} else {
+								// println("loaded", len(my_items), "check(s)")
+							}
 
-						result := ""
-						for _, v := range my_items {
-							result += fmt.Sprintf("\n\n<b>%s ID%d (%t)</b> %s", v.Title, v.ID, v.IsEnabled, v.URL)
-						}
-						if result == "" {
-							result = "Emty list"
-						}
-						telegramChan <- telegramResponse{result, chatID}
-					}()
-				} else {
-					telegramChan <- telegramResponse{"Not authorized", chatID}
+							result := ""
+							for _, v := range my_items {
+								result += fmt.Sprintf("\n\n/%d <b>%s (%s)</b> %s", v.ID, v.Title, v.IsEnabledPretty, v.ShortURL)
+							}
+							if result == "" {
+								result = "Empty list"
+							}
+							telegramChan <- telegramResponse{result, chatID}
+						}()
+					} else {
+						telegramChan <- telegramResponse{"Not authorized", chatID}
+					}
+				default:
+					log.Printf("[%d] %s, %s, %s", chatID, text, command, args)
+					msg.Text = text
+					msg.ReplyMarkup = commandKeyboard
+					bot.Send(msg)
 				}
-			default:
-				log.Printf("[%d] %s, %s, %s", chatID, text, command, args)
-				msg.Text = text
-				msg.ReplyMarkup = commandKeyboard
-				bot.Send(msg)
 			}
 			// }
 		case resp := <-telegramChan:
