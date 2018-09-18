@@ -12,15 +12,11 @@ nohup gourlwatcher -token telegram:token -secret auth_secret &
 
 /info url_id
 
-/diff url_id
-
 /delete url_id
 
 /toggleenabled url_id
 
 /togglecontains url_id
-
-/togglediff url_id
 
 /add url
 

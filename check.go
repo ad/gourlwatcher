@@ -15,7 +15,6 @@ import (
 
 	"github.com/boltdb/bolt"
 	"github.com/robfig/cron"
-	"github.com/sergi/go-diff/diffmatchpatch"
 )
 
 // Helper struct for serialization.
@@ -32,8 +31,6 @@ type Check struct {
 	NotifyPresent bool      `json:"is_present"`
 	IsEnabled     bool      `json:"is_enabled"`
 	Content       string    `json:"content"`
-	Diff          string    `json:"diff"`
-	SendDiff      bool      `json:"send_diff"`
 	Title         string    `json:"title"`
 
 	// The last-checked date, as a string.
@@ -135,7 +132,6 @@ func (c *Check) Update(db *bolt.DB) {
 		// os.Exit(1)
 	}
 
-	oldContent := c.Content
 	c.Content = string(test)
 
 	// println(string(test))
@@ -162,21 +158,12 @@ func (c *Check) Update(db *bolt.DB) {
 
 	// Check for update
 	if c.LastHash != sum {
-
-		dmp := diffmatchpatch.New()
-		diffs := dmp.DiffMain(oldContent, c.Content, false)
-		prettyDiff := dmp.DiffPrettyHtml(diffs)
-		c.Diff = prettyDiff
-		if !c.SendDiff {
-			prettyDiff = ""
-		}
-
 		contains := strings.Contains(string(test), c.Selector)
 
 		if c.NotifyPresent && !contains {
-			telegramChan <- telegramResponse{fmt.Sprintf("<b>%s</b>\n<i>ID %d ALERT string is not found</i>\n%s", c.Title, c.ID, prettyDiff), int64(c.UserID)}
+			telegramChan <- telegramResponse{fmt.Sprintf("<b>%s</b>\n<i>ID %d ALERT string is not found</i>", c.Title, c.ID), int64(c.UserID)}
 		} else if !c.NotifyPresent && contains {
-			telegramChan <- telegramResponse{fmt.Sprintf("<b>%s</b>\n<i>ID %d ALERT string is found</i>\n%s", c.Title, c.ID, prettyDiff), int64(c.UserID)}
+			telegramChan <- telegramResponse{fmt.Sprintf("<b>%s</b>\n<i>ID %d ALERT string is found</i>", c.Title, c.ID), int64(c.UserID)}
 		}
 
 		c.LastHash = sum
@@ -350,51 +337,10 @@ func (c *Check) Info(db *bolt.DB, requester int64, findID string) (result string
 
 	check.PrepareForDisplay()
 
-	return fmt.Sprintf("<b>%s</b>\n%d from %d (%t)\nURL: %s\nSearch: %s\nlast checked: %s\nlast changed: %s\nShow diff: %t\nMust contain string: %t", check.Title, check.ID, check.UserID, check.IsEnabled, check.URL, check.Selector, check.LastCheckedPretty, check.LastChangedPretty, check.SendDiff, check.NotifyPresent)
+	return fmt.Sprintf("<b>%s</b>\n%d from %d (%t)\nURL: %s\nSearch: %s\nlast checked: %s\nlast changed: %s\nMust contain string: %t", check.Title, check.ID, check.UserID, check.IsEnabled, check.URL, check.Selector, check.LastCheckedPretty, check.LastChangedPretty, check.NotifyPresent)
 }
 
-func (c *Check) ShowDiff(db *bolt.DB, requester int64, findID string) (result string) {
-	id, err := strconv.ParseUint(findID, 10, 64)
-	if err != nil {
-		println(err.Error(), http.StatusBadRequest)
-		return "wrong id"
-	}
-
-	check := &Check{}
-	err = db.View(func(tx *bolt.Tx) error {
-		data := tx.Bucket(UrlsBucket).Get(KeyFor(id))
-		if data == nil {
-			return fmt.Errorf("no such check: %d", id)
-		}
-
-		if err := json.Unmarshal(data, check); err != nil {
-			println("error unmarshaling json", err)
-			return err
-		}
-
-		check.ID = id
-		return nil
-	})
-
-	if err != nil {
-		println(err.Error(), http.StatusInternalServerError)
-		return err.Error()
-	}
-
-	if requester != int64(check.UserID) {
-		return "Not your check"
-	}
-
-	if requester != int64(check.UserID) {
-		return "Not your check"
-	}
-
-	check.PrepareForDisplay()
-
-	return fmt.Sprintf("%v", check.Diff)
-}
-
-func (c *Check) Modify(db *bolt.DB, requester int64, findID int64, title string, url string, search string, notifyPresent bool, isEnabled bool, sendDiff bool) (result string) {
+func (c *Check) Modify(db *bolt.DB, requester int64, findID int64, title string, url string, search string, notifyPresent bool, isEnabled bool) (result string) {
 	// id, err := strconv.ParseUint(findID, 10, 64)
 	// if err != nil {
 	// 	println(err.Error(), http.StatusBadRequest)
@@ -442,10 +388,6 @@ func (c *Check) Modify(db *bolt.DB, requester int64, findID int64, title string,
 	}
 	if c.IsEnabled != isEnabled {
 		check.IsEnabled = isEnabled
-		updated = true
-	}
-	if c.SendDiff != sendDiff {
-		check.SendDiff = sendDiff
 		updated = true
 	}
 	if c.Title != title {
