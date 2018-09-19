@@ -19,6 +19,14 @@
 
 [[projects]]
   branch = "master"
+  digest = "1:d7201d486e20473551dc61158bf19c21cc11c886c68365fe6d096ed896ab08f1"
+  name = "github.com/gobs/httpclient"
+  packages = ["."]
+  pruneopts = ""
+  revision = "5ea4cd976b24e34d20561a19f37255c4f8bd84c6"
+
+[[projects]]
+  branch = "master"
   digest = "1:4e4f57765d8d5e71df025ffe17a52ae2fadd82f1bfe4d11211ae8aa94261a519"
   name = "github.com/gobs/pretty"
   packages = ["."]
