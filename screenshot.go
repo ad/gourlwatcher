@@ -5,7 +5,6 @@ import (
 	"encoding/hex"
 	"fmt"
 	"io"
-	"log"
 	"os"
 	"os/exec"
 	"runtime"
@@ -104,7 +103,7 @@ func screenshot(url string) (filename string) {
 	_ = remote.SetBlockedURLs("*.jpg", "*.png", "*.gif", "*.svg", "*.tiff")
 
 	// create new tab
-	// tab, _ := remote.NewTab("https://www.apple.com/ru/shop/buy-watch/apple-watch/44мм-gps-алюминий-«серый-космос»-чёрный-спортивный-браслет")
+	_, _ := remote.NewTab(url)
 	// fmt.Println(tab)
 
 	// enable event processing
@@ -145,10 +144,7 @@ func screenshot(url string) (filename string) {
 	width := 1024 //int(res["width"].(float64))
 	height := 1536
 
-	err = remote.SetVisibleSize(width, height)
-	if err != nil {
-		log.Fatal("error in setVisibleSize: ", err)
-	}
+	_ = remote.SetVisibleSize(width, height)
 	// }
 
 	// take a screenshot
