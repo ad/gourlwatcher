@@ -6,6 +6,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -61,11 +62,6 @@ func main() {
 	c.Start()
 	defer c.Stop()
 
-	startChan, oc, ic, _ := commandsManager(db, c)
-	innerChan = ic
-	outerChan = oc
-	telegramChan = make(chan telegramResponse)
-
 	bot, err := tgbotapi.NewBotAPI(*telegramToken)
 	if err != nil {
 		log.Panic(err)
@@ -76,6 +72,11 @@ func main() {
 
 	var ucfg = tgbotapi.NewUpdate(0)
 	ucfg.Timeout = 60
+
+	startChan, oc, ic, _ := commandsManager(db, c, bot)
+	innerChan = ic
+	outerChan = oc
+	telegramChan = make(chan telegramResponse)
 
 	updates, err := bot.GetUpdatesChan(ucfg)
 
@@ -182,22 +183,13 @@ func main() {
 					} else {
 						telegramChan <- telegramResponse{"Not authorized", chatID, -1}
 					}
-				case "info", "edit", "delete", "togglecontains", "toggleenabled", "updatesearch", "updateurl", "updatetitle", "togglerecovered":
+				case "info", "shot", "edit", "delete", "togglecontains", "toggleenabled", "updatesearch", "updateurl", "updatetitle", "togglerecovered":
 					// if user.Check(db, uint64(userID)) {
 					// println("toggle enabled")
 					innerChan <- telegramResponse{text, chatID, -1}
 					// } else {
 					// 	telegramChan <- telegramResponse{"Not authorized", chatID}
 					// }
-				case "shot":
-					// https://github.com/suntong/web2image/blob/master/cdp-screenshot.go
-					// https://github.com/chromedp/examples/blob/master/screenshot/main.go
-					if user.Check(db, uint64(userID)) {
-						// println("shot")
-						innerChan <- telegramResponse{text, chatID, -1}
-					} else {
-						telegramChan <- telegramResponse{"Not authorized", chatID, -1}
-					}
 				case "list":
 					if user.Check(db, uint64(userID)) {
 						go func() {
@@ -302,7 +294,7 @@ func TryUpdate(db *bolt.DB, id uint64) {
 	go check.Update(db)
 }
 
-func commandsManager(db *bolt.DB, cron *cron.Cron) (startChan chan bool, outerChan, innerChan chan telegramResponse, stopChan chan int64) {
+func commandsManager(db *bolt.DB, cron *cron.Cron, bot *tgbotapi.BotAPI) (startChan chan bool, outerChan, innerChan chan telegramResponse, stopChan chan int64) {
 	startChan = make(chan bool)
 	outerChan = make(chan telegramResponse)
 	innerChan = make(chan telegramResponse)
@@ -311,7 +303,7 @@ func commandsManager(db *bolt.DB, cron *cron.Cron) (startChan chan bool, outerCh
 		for {
 			select {
 			case <-startChan:
-				go doCommand(db, cron, innerChan, stopChan)
+				go doCommand(db, cron, bot, innerChan, stopChan)
 			case msg := <-outerChan:
 				fmt.Println("command <- ", msg)
 				//default:
@@ -322,7 +314,7 @@ func commandsManager(db *bolt.DB, cron *cron.Cron) (startChan chan bool, outerCh
 	return startChan, outerChan, innerChan, stopChan
 }
 
-func doCommand(db *bolt.DB, cron *cron.Cron, innerChan chan telegramResponse, stopChan chan int64) {
+func doCommand(db *bolt.DB, cron *cron.Cron, bot *tgbotapi.BotAPI, innerChan chan telegramResponse, stopChan chan int64) {
 	for {
 		select {
 		case msg := <-innerChan:
@@ -339,6 +331,43 @@ func doCommand(db *bolt.DB, cron *cron.Cron, innerChan chan telegramResponse, st
 								telegramChan <- telegramResponse{"Deleted", msg.to, -1}
 							} else {
 								telegramChan <- telegramResponse{"Not deleted", msg.to, msg.check_id}
+							}
+						}
+					}
+				} else if strings.HasPrefix(msg.body, "/shot") {
+					stringSlice := strings.Split(msg.body, " ")
+					if len(stringSlice) >= 2 {
+						if _, err := strconv.ParseInt(stringSlice[1], 10, 64); err == nil {
+							check := &Check{}
+							check = check.Get(db, stringSlice[1])
+
+							if check != nil {
+								go func() {
+									filename := screenshot(check.URL)
+									if filename != "" {
+										// println(filename)
+										var file, err = os.OpenFile(filename, os.O_RDWR, 0644)
+										defer file.Close()
+										if err == nil {
+											_, err := bot.Send(
+												tgbotapi.PhotoConfig{
+													BaseFile: tgbotapi.BaseFile{
+														BaseChat:    tgbotapi.BaseChat{ChatID: msg.to},
+														File:        filename,
+														UseExisting: false,
+													},
+													Caption: "",
+												},
+											)
+											if err != nil {
+												println(err.Error())
+											}
+										} else {
+											println(err.Error())
+										}
+										err = os.Remove(filename)
+									}
+								}()
 							}
 						}
 					}

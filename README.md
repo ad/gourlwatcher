@@ -22,6 +22,8 @@ nohup gourlwatcher -token telegram:token -secret auth_secret &
 
 /togglerecovered url_id
 
+/shot url_id
+
 /add url
 
 check string in result body

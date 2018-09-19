@@ -10,6 +10,146 @@
   version = "v1.3.1"
 
 [[projects]]
+  branch = "master"
+  digest = "1:71fb97e52979668d72f16c6c94851bf99ae1187998f2a2415d6f5ffa5e2592bb"
+  name = "github.com/gobs/args"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "86002b4df18c1c4919c97bd7b7bd46e216fc69c3"
+
+[[projects]]
+  branch = "master"
+  digest = "1:a034f5f86201a7620bb0ac76e0c23d8b1a7395324c9cff368d36de4941a59d1a"
+  name = "github.com/gobs/httpclient"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "5ea4cd976b24e34d20561a19f37255c4f8bd84c6"
+
+[[projects]]
+  branch = "master"
+  digest = "1:766bf25377bc2a5bd7b7b2bbe3a490200be68cc325c63db9f338316357086f2f"
+  name = "github.com/gobs/pretty"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "09732c25a95b8e10e85177a3201cf4c7fe35a377"
+
+[[projects]]
+  branch = "master"
+  digest = "1:1496b3a835688df2d11c7357c120b1134a939afbcd16370a1ab6f1272ec8a377"
+  name = "github.com/gobs/simplejson"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "a8c8b33742776e8de91e945bbdc38adae93cb0bb"
+
+[[projects]]
+  digest = "1:bbadccf3d3317ea03c0dac0b45b673b4b397c8f91a1d2eff550a3c51c4ad770e"
+  name = "github.com/gogo/protobuf"
+  packages = ["proto"]
+  pruneopts = "UT"
+  revision = "636bf0302bc95575d69441b25a2603156ffdddf1"
+  version = "v1.1.1"
+
+[[projects]]
+  digest = "1:7b5c6e2eeaa9ae5907c391a91c132abfd5c9e8a784a341b5625e750c67e6825d"
+  name = "github.com/gorilla/websocket"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "66b9c49e59c6c48f0ffce28c2d8b8a5678502c6d"
+  version = "v1.4.0"
+
+[[projects]]
+  branch = "master"
+  digest = "1:31e6ca5d3801cd74e569cb9597d5a0b06d862307ffb045e581b44fe4a316ea09"
+  name = "github.com/gxed/GoEndian"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "0f5c6873267e5abf306ffcdfcfa4bf77517ef4a7"
+
+[[projects]]
+  branch = "master"
+  digest = "1:dc57a2580e33eae03691c9ede0b30cf1dc622ff471fc6a36388879ded5702d02"
+  name = "github.com/gxed/eventfd"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "80a92cca79a8041496ccc9dd773fcb52a57ec6f9"
+
+[[projects]]
+  digest = "1:f8a44830eff665686f6c675e2325b72e2cdc73d0e85e6d32c7814bcfa6b64287"
+  name = "github.com/ipfs/go-log"
+  packages = [
+    ".",
+    "tracer",
+    "tracer/wire",
+    "writer",
+  ]
+  pruneopts = "UT"
+  revision = "3eb0ba540197202c4e6c4a9e96fb11b4831c158b"
+  version = "v1.5.6"
+
+[[projects]]
+  digest = "1:093d30c5ea970ed01c9b878b743be9c77d1107d7cde5b14f72524a4b47d2a71d"
+  name = "github.com/jbenet/go-reuseport"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "562c3ba3003e80c9829992a6c1a760d51eb0792b"
+  version = "v0.1.17"
+
+[[projects]]
+  digest = "1:fcde2419555e7cf8638284a52a2fc0fdb1c2e55d7a074058421f218649b68d83"
+  name = "github.com/libp2p/go-reuseport"
+  packages = [
+    "poll",
+    "singlepoll",
+  ]
+  pruneopts = "UT"
+  revision = "562c3ba3003e80c9829992a6c1a760d51eb0792b"
+  version = "v0.1.17"
+
+[[projects]]
+  digest = "1:96eca00555fddc36f6d1dc6d5d47435005bf8a950e700afcd76508bde723bc0e"
+  name = "github.com/libp2p/go-sockaddr"
+  packages = ["net"]
+  pruneopts = "UT"
+  revision = "5c3ac7e71ec1941a0c2ed4271535d9427feb829c"
+  version = "v1.0.3"
+
+[[projects]]
+  digest = "1:c658e84ad3916da105a761660dcaeb01e63416c8ec7bc62256a9b411a05fcd67"
+  name = "github.com/mattn/go-colorable"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "167de6bfdfba052fa6b2d3664c8f5272e23c9072"
+  version = "v0.0.9"
+
+[[projects]]
+  digest = "1:0981502f9816113c9c8c4ac301583841855c8cf4da8c72f696b3ebedf6d0e4e5"
+  name = "github.com/mattn/go-isatty"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "6ca4dbf54d38eea1a992b3c722a76a5d1c4cb25c"
+  version = "v0.0.4"
+
+[[projects]]
+  digest = "1:450b7623b185031f3a456801155c8320209f75d0d4c4e633c6b1e59d44d6e392"
+  name = "github.com/opentracing/opentracing-go"
+  packages = [
+    ".",
+    "ext",
+    "log",
+  ]
+  pruneopts = "UT"
+  revision = "1949ddbfd147afd4d964a9f00b24eb291e0e7c38"
+  version = "v1.0.2"
+
+[[projects]]
+  branch = "master"
+  digest = "1:4006bdf9307af498483cada376f3cab53d5ee269ec808c42d01a9fe087440254"
+  name = "github.com/raff/godet"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "e13026485643c8b870f701df17bf3cfbe41c2f37"
+
+[[projects]]
   digest = "1:ed615c5430ecabbb0fb7629a182da65ecee6523900ac1ac932520860878ffcad"
   name = "github.com/robfig/cron"
   packages = ["."]
@@ -27,9 +167,28 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:6eb2645d74b43d9c87b51947df39f7c668a4f422cd512053f7f6f75bfaad0197"
+  digest = "1:0102dfa2f98777db8ff68c920bef1be3ff8504e90485b6cdd24d61b981b487b6"
+  name = "github.com/whyrusleeping/go-logging"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "0457bb6b88fc1973573aaf6b5145d8d3ae972390"
+
+[[projects]]
+  branch = "master"
+  digest = "1:76ee51c3f468493aff39dbacc401e8831fbb765104cbf613b89bef01cf4bad70"
+  name = "golang.org/x/net"
+  packages = ["context"]
+  pruneopts = "UT"
+  revision = "26e67e76b6c3f6ce91f7c52def5af501b4e0f3a2"
+
+[[projects]]
+  branch = "master"
+  digest = "1:374fc90fcb026e9a367e3fad29e988e5dd944b68ca3f24a184d77abc5307dda4"
   name = "golang.org/x/sys"
-  packages = ["unix"]
+  packages = [
+    "unix",
+    "windows",
+  ]
   pruneopts = "UT"
   revision = "d0be0721c37eeb5299f245a996a483160fc36940"
 
@@ -46,6 +205,10 @@
   analyzer-version = 1
   input-imports = [
     "github.com/boltdb/bolt",
+    "github.com/gobs/args",
+    "github.com/gobs/pretty",
+    "github.com/gobs/simplejson",
+    "github.com/raff/godet",
     "github.com/robfig/cron",
     "gopkg.in/telegram-bot-api.v4",
   ]
