@@ -249,7 +249,12 @@ func main() {
 				msg.ParseMode = "HTML"
 				msg.DisableNotification = true
 				if resp.check_id > 0 {
-					msg.ReplyMarkup = initKeyboard(db, resp.check_id)
+					check := &Check{}
+					check = check.Get(db, strconv.FormatInt(resp.check_id, 10))
+
+					if check != nil {
+						msg.ReplyMarkup = initKeyboard(db, check)
+					}
 				}
 				_, err := bot.Send(msg)
 				if err != nil {
@@ -474,13 +479,8 @@ func Short(s string, i int) string {
 	return s
 }
 
-func initKeyboard(db *bolt.DB, check_id int64) (commandKeyboard tgbotapi.InlineKeyboardMarkup) {
-	check := &Check{}
-	check = check.Get(db, strconv.FormatInt(check_id, 10))
-
-	if check == nil {
-		return
-	}
+func initKeyboard(db *bolt.DB, check *Check) (commandKeyboard tgbotapi.InlineKeyboardMarkup) {
+	check_id := check.ID
 
 	info := fmt.Sprintf("/%s %d", "info", check_id)
 	delete := fmt.Sprintf("/%s %d", "delete", check_id)
