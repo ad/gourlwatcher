@@ -59,7 +59,7 @@ func screenshot(url string) (filename string) {
 			chromeapp += " --headless"
 		}
 
-		chromeapp += " --remote-debugging-port=9222 --hide-scrollbars --disable-extensions --disable-gpu about:blank"
+		chromeapp += " --no-gpu --disable-software-rasterizer --headless --mute-audio --hide-scrollbars --no-sandbox --remote-debugging-port=9222 --disable-extensions --disable-gpu about:blank"
 	}
 
 	parts := args.GetArgs(chromeapp)
