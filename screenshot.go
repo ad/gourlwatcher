@@ -103,7 +103,7 @@ func screenshot(url string) (filename string) {
 	_ = remote.SetBlockedURLs("*.jpg", "*.png", "*.gif", "*.svg", "*.tiff")
 
 	// create new tab
-	_, _ := remote.NewTab(url)
+	_, _ = remote.NewTab(url)
 	// fmt.Println(tab)
 
 	// enable event processing
